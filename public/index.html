@@ -3,92 +3,145 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Inkwell - fill and sign a PDF</title>
-<meta name="description" content="Open a PDF, fill it in, sign it, download it. Nothing leaves your device.">
+<title>Inkwell</title>
+<meta name="description" content="A fast, quiet PDF reader that can fill and sign. Nothing leaves your device.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=Caveat:wght@600&family=Dancing+Script:wght@600&family=Homemade+Apple&family=Sacramento&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Dancing+Script:wght@600&family=Homemade+Apple&family=Sacramento&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/app.css">
 </head>
 <body>
-<div class="app">
-  <div class="topbar">
-    <div class="brand"><b>Inkwell</b><span>fill &amp; sign</span></div>
-    <div class="divider"></div>
-    <div class="fname" id="fname">No file open</div>
-    <div class="spacer"></div>
-    <div class="pageno" id="pageno"></div>
-    <div class="zoom" id="zoombox">
-      <button id="zout" title="Zoom out" aria-label="Zoom out">−</button>
-      <div class="pct" id="pct">100%</div>
-      <button id="zin" title="Zoom in" aria-label="Zoom in">+</button>
-      <button id="zfit" title="Fit width" aria-label="Fit width">
-        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 8V4h4M20 8V4h-4M4 16v4h4M20 16v4h-4"/></svg>
-      </button>
-    </div>
-    <button class="btn" id="openbtn">Open PDF</button>
-    <button class="btn primary" id="dl" disabled>
-      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 19h16"/></svg>
-      Download
+
+<div class="toolbar" id="toolbar">
+  <button class="tb" id="openbtn" title="Open (Ctrl+O)" aria-label="Open">
+    <svg viewBox="0 0 16 16"><path d="M1.5 13V4h4l1.2 1.6H14V13z"/><path d="M1.5 4V3h3.2l1.2 1.6"/></svg>
+  </button>
+
+  <span class="sep"></span>
+
+  <button class="tb" id="prev" title="Previous page (P)" aria-label="Previous page">
+    <svg viewBox="0 0 16 16"><path d="M10 3L5 8l5 5"/></svg>
+  </button>
+  <input class="pagebox" id="pagebox" value="" aria-label="Page number" autocomplete="off">
+  <span class="of" id="pagecount">of 0</span>
+  <button class="tb" id="next" title="Next page (N)" aria-label="Next page">
+    <svg viewBox="0 0 16 16"><path d="M6 3l5 5-5 5"/></svg>
+  </button>
+
+  <span class="sep"></span>
+
+  <button class="tb" id="zout" title="Zoom out (-)" aria-label="Zoom out">
+    <svg viewBox="0 0 16 16"><path d="M3 8h10"/></svg>
+  </button>
+  <select class="zoomsel" id="zoomsel" aria-label="Zoom">
+    <option value="fitw">Fit Width</option>
+    <option value="fitp">Fit Page</option>
+    <option value="1">Actual Size</option>
+    <option value="0.5">50%</option>
+    <option value="0.75">75%</option>
+    <option value="1.25">125%</option>
+    <option value="1.5">150%</option>
+    <option value="2">200%</option>
+    <option value="4">400%</option>
+  </select>
+  <button class="tb" id="zin" title="Zoom in (+)" aria-label="Zoom in">
+    <svg viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></svg>
+  </button>
+
+  <span class="sep"></span>
+
+  <button class="tb" id="vcont" title="Continuous scroll (C)" aria-label="Continuous scroll">
+    <svg viewBox="0 0 16 16"><rect x="3.5" y="1.5" width="9" height="5"/><rect x="3.5" y="8.5" width="9" height="5"/></svg>
+  </button>
+  <button class="tb" id="vsingle" title="Single page (C)" aria-label="Single page">
+    <svg viewBox="0 0 16 16"><rect x="3.5" y="2.5" width="9" height="11"/></svg>
+  </button>
+  <button class="tb" id="toc" title="Bookmarks (F12)" aria-label="Bookmarks" disabled>
+    <svg viewBox="0 0 16 16"><path d="M4 2h8v12l-4-3-4 3z"/></svg>
+  </button>
+
+  <span class="sep"></span>
+
+  <div class="tools" id="tools">
+    <button class="tb tool" data-tool="hand" title="Hand — drag to pan (H)" aria-label="Hand">
+      <svg viewBox="0 0 16 16"><path d="M5 8V3.6a1 1 0 012 0V7m0-.6a1 1 0 012 0V7m0-.4a1 1 0 012 0V8m0-.6a1 1 0 012 0v3.2c0 2-1.6 3.4-3.6 3.4H8.6c-1 0-1.7-.4-2.3-1.2L4 9.6a1 1 0 011.5-1.3L7 9.6"/></svg>
     </button>
+    <button class="tb tool on" data-tool="text" title="Text — click the page to type (1)" aria-label="Text">
+      <svg viewBox="0 0 16 16"><path d="M3 4V3h10v1M8 3v10M6 13h4"/></svg>
+    </button>
+    <button class="tb tool" data-tool="check" title="Check (2)" aria-label="Check">
+      <svg viewBox="0 0 16 16"><path d="M2.5 8.5l3.5 3.5L13.5 4"/></svg>
+    </button>
+    <button class="tb tool" data-tool="cross" title="Cross (3)" aria-label="Cross">
+      <svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+    </button>
+    <button class="tb tool" data-tool="date" title="Today's date (4)" aria-label="Date">
+      <svg viewBox="0 0 16 16"><rect x="2.5" y="3.5" width="11" height="10"/><path d="M2.5 6.5h11M5.5 2v2M10.5 2v2"/></svg>
+    </button>
+    <button class="tb tool wide" data-tool="sig" id="sigtool" title="Signature (5)" aria-label="Signature">
+      <span id="sigicon">
+        <svg viewBox="0 0 16 16"><path d="M1.5 11c2.4 0 2.7-7.5 4.8-7.5s.7 6.1 2.4 6.1S11.6 6 13 6M2 14h12"/></svg>
+      </span>
+    </button>
+    <button class="tb" id="editsig" title="Change signature" aria-label="Change signature" hidden>
+      <svg viewBox="0 0 16 16"><path d="M11.5 2.5l2 2L6 12l-2.5.5L4 10z"/></svg>
+    </button>
+    <button class="swatch on" data-ink="#16325c" style="background:#16325c" title="Blue ink" aria-label="Blue ink"></button>
+    <button class="swatch" data-ink="#14181c" style="background:#14181c" title="Black ink" aria-label="Black ink"></button>
   </div>
 
-  <div class="body">
-    <nav class="rail hidden" id="rail">
-      <button class="tool on" data-tool="text" title="Text (T)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 6V5h14v1M12 5v14M9 19h6"/></svg>
-        <small>Text</small>
-      </button>
-      <button class="tool" data-tool="check" title="Checkmark (C)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6"/></svg>
-        <small>Check</small>
-      </button>
-      <button class="tool" data-tool="cross" title="Cross (X)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
-        <small>Cross</small>
-      </button>
-      <button class="tool" data-tool="date" title="Today's date (D)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>
-        <small>Date</small>
-      </button>
-      <button class="tool" data-tool="sig" id="sigtool" title="Signature (S)">
-        <span id="sigicon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 17c3.5 0 4-11 7-11s1 9 3.5 9S17 9 19 9M4 21h16"/></svg>
-        </span>
-        <small>Sign</small>
-      </button>
-      <button class="tool hidden" id="editsig" title="Change signature">
-        <small style="text-decoration:underline">Change</small>
-      </button>
-      <div class="ink">
-        <button class="swatch on" data-ink="#16325c" style="background:#16325c" title="Blue ink" aria-label="Blue ink"></button>
-        <button class="swatch" data-ink="#14181c" style="background:#14181c" title="Black ink" aria-label="Black ink"></button>
-      </div>
-      <div class="railfoot">Stays on<br>your device</div>
-    </nav>
+  <span class="grow"></span>
 
+  <div class="find" id="find">
+    <label class="findlabel" for="findbox">Find:</label>
+    <input class="findbox" id="findbox" autocomplete="off" aria-label="Find">
+    <button class="tb" id="findprev" title="Previous match (Shift+F3)" aria-label="Previous match">
+      <svg viewBox="0 0 16 16"><path d="M10 3L5 8l5 5"/></svg>
+    </button>
+    <button class="tb" id="findnext" title="Next match (F3)" aria-label="Next match">
+      <svg viewBox="0 0 16 16"><path d="M6 3l5 5-5 5"/></svg>
+    </button>
+    <span class="findcount" id="findcount"></span>
+  </div>
+
+  <span class="sep"></span>
+
+  <button class="tb save" id="dl" title="Save filled copy (Ctrl+S)" disabled>
+    <svg viewBox="0 0 16 16"><path d="M8 2v8m0 0L5 7m3 3l3-3M2.5 13.5h11"/></svg>
+    <span>Save</span>
+  </button>
+</div>
+
+<div class="main">
+  <aside class="side" id="side" hidden>
+    <div class="sidehead">Bookmarks</div>
+    <div class="tree" id="tree"></div>
+  </aside>
+  <div class="splitter" id="splitter" hidden></div>
+
+  <div class="viewer" id="viewer">
+    <div class="doc" id="doc"></div>
     <div class="empty" id="empty">
       <div class="drop" id="drop">
-        <h1>Fill it in. Sign it. Done.</h1>
-        <p>Drop a PDF here and start typing. Your file never leaves this browser.</p>
-        <div class="rule">
-          <button class="btn primary" id="pick">Choose a PDF</button>
-          <div class="hint">or drag one onto this page</div>
-        </div>
-        <div class="hint">Works with scans and flat forms. <b>Click anywhere to type.</b></div>
+        <h1>Inkwell</h1>
+        <p>A quiet PDF reader that can fill and sign.</p>
+        <button class="open" id="pick">Open a PDF</button>
+        <div class="hint">or drop one anywhere on this window</div>
+        <table class="keys">
+          <tr><td>J / K</td><td>scroll</td><td>N / P</td><td>page</td></tr>
+          <tr><td>Ctrl+G</td><td>go to page</td><td>Ctrl+F</td><td>find</td></tr>
+          <tr><td>C</td><td>continuous</td><td>F12</td><td>bookmarks</td></tr>
+          <tr><td>1&ndash;5</td><td>fill tools</td><td>F11</td><td>presentation</td></tr>
+        </table>
       </div>
-    </div>
-
-    <div class="viewer hidden" id="viewer">
-      <div class="doc" id="doc"></div>
     </div>
   </div>
 </div>
 
 <div class="scrim" id="scrim">
-  <div class="modal" role="dialog" aria-modal="true" aria-label="Create signature">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Signature">
     <header>
-      <h2>Your signature</h2>
+      <h2>Signature</h2>
       <div class="tabs" id="tabs">
         <button class="on" data-tab="draw">Draw</button>
         <button data-tab="type">Type</button>
@@ -111,17 +164,17 @@
 
     <div class="pane" data-pane="upload">
       <div class="drophere">
-        <button class="btn" id="upick">Choose an image</button>
-        <div style="margin-top:10px; font-size:12px">PNG or JPG. A white background is removed automatically.</div>
+        <button class="open small" id="upick">Choose an image</button>
+        <div class="note">PNG or JPG. A white background is removed automatically.</div>
       </div>
       <div id="uprev"></div>
     </div>
 
     <footer>
-      <span class="note">Saved for this session only.</span>
-      <div class="spacer"></div>
-      <button class="btn" id="sigcancel">Cancel</button>
-      <button class="btn primary" id="siguse" disabled>Use signature</button>
+      <span class="note">Kept for this session only.</span>
+      <span class="grow"></span>
+      <button class="open ghost" id="sigcancel">Cancel</button>
+      <button class="open" id="siguse" disabled>Use signature</button>
     </footer>
   </div>
 </div>
