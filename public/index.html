@@ -16,6 +16,9 @@
   <button class="tb" id="openbtn" title="Open (Ctrl+O)" aria-label="Open">
     <svg viewBox="0 0 16 16"><path d="M1.5 13V4h4l1.2 1.6H14V13z"/><path d="M1.5 4V3h3.2l1.2 1.6"/></svg>
   </button>
+  <button class="tb" id="printbtn" title="Print (Ctrl+P)" aria-label="Print" disabled>
+    <svg viewBox="0 0 16 16"><path d="M4.5 6V2.5h7V6"/><rect x="2.5" y="6" width="11" height="5"/><path d="M4.5 9.5h7v4h-7z"/></svg>
+  </button>
 
   <span class="sep"></span>
 
@@ -63,6 +66,9 @@
   <span class="sep"></span>
 
   <div class="tools" id="tools">
+    <button class="tb tool" data-tool="pick" title="Select text — drag to select, Ctrl+C to copy (V)" aria-label="Select text">
+      <svg viewBox="0 0 16 16"><path d="M6 2.5h4M6 13.5h4M8 2.5v11"/></svg>
+    </button>
     <button class="tb tool" data-tool="hand" title="Hand — drag to pan (H)" aria-label="Hand">
       <svg viewBox="0 0 16 16"><path d="M5 8V3.6a1 1 0 012 0V7m0-.6a1 1 0 012 0V7m0-.4a1 1 0 012 0V8m0-.6a1 1 0 012 0v3.2c0 2-1.6 3.4-3.6 3.4H8.6c-1 0-1.7-.4-2.3-1.2L4 9.6a1 1 0 011.5-1.3L7 9.6"/></svg>
     </button>
@@ -130,8 +136,8 @@
         <table class="keys">
           <tr><td>J / K</td><td>scroll</td><td>N / P</td><td>page</td></tr>
           <tr><td>Ctrl+G</td><td>go to page</td><td>Ctrl+F</td><td>find</td></tr>
-          <tr><td>C</td><td>continuous</td><td>F12</td><td>bookmarks</td></tr>
-          <tr><td>1&ndash;5</td><td>fill tools</td><td>F11</td><td>presentation</td></tr>
+          <tr><td>V / H</td><td>select / pan</td><td>Ctrl+P</td><td>print</td></tr>
+          <tr><td>1&ndash;5</td><td>fill tools</td><td>F11 / F12</td><td>present / marks</td></tr>
         </table>
       </div>
     </div>
@@ -181,6 +187,7 @@
 
 <input type="file" id="file" accept="application/pdf,.pdf" class="vh">
 <input type="file" id="ufile" accept="image/png,image/jpeg" class="vh">
+<iframe id="printframe" title="Print"></iframe>
 <div class="toast" id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
