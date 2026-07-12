@@ -32,7 +32,8 @@ var S = {
   zoom:1, zmode:'fitw', cont:true, cur:1,
   tool:'text', ink:'#16325c',
   anns:[], els:{}, sel:null, sig:null, hist:[], seq:0,
-  find:{ q:'', hits:[], i:-1, indexed:false }
+  find:{ q:'', hits:[], i:-1, indexed:false },
+  printUrl:null
 };
 
 var CHECK_PATH = 'M 12 54 L 40 82 L 88 16';
@@ -81,18 +82,23 @@ function load(data){
   }).then(function(pages){
     S.pages = pages.map(function(p){
       var vp = p.getViewport({ scale:1 });
-      return { pdf:p, vw:vp.width, vh:vp.height, el:null, canvas:null, layer:null, find:null, scale:0, busy:false, items:null };
+      return {
+        pdf:p, vw:vp.width, vh:vp.height,
+        el:null, canvas:null, layer:null, find:null, text:null,
+        scale:0, tscale:0, busy:false, ttask:null, tc:null, items:null
+      };
     });
     buildDoc();
     document.title = S.name + ' - Inkwell';
     $('empty').hidden = true;
     $('dl').disabled = false;
+    $('printbtn').disabled = false;
     $('pagecount').textContent = 'of ' + S.pages.length;
     S.cur = 1;
     $('pagebox').value = '1';
     applyZoomMode();
     loadOutline();
-    toast('Click the page to type. Press H to pan.');
+    toast('Click the page to type. V to select text, H to pan.');
   }).catch(function(err){
     console.error(err);
     document.title = 'Inkwell';
@@ -113,14 +119,23 @@ function buildDoc(){
     var el = document.createElement('div');
     el.className = 'page';
     el.dataset.p = i;
+
     var c = document.createElement('canvas');
     var fl = document.createElement('div');
     fl.className = 'findlayer';
+    var tl = document.createElement('div');
+    tl.className = 'textlayer';
     var layer = document.createElement('div');
     layer.className = 'layer';
-    el.appendChild(c); el.appendChild(fl); el.appendChild(layer);
+
+    el.appendChild(c);
+    el.appendChild(fl);
+    el.appendChild(tl);
+    el.appendChild(layer);
     doc.appendChild(el);
-    p.el = el; p.canvas = c; p.layer = layer; p.find = fl; p.scale = 0;
+
+    p.el = el; p.canvas = c; p.layer = layer; p.find = fl; p.text = tl;
+    p.scale = 0; p.tscale = 0;
     layer.addEventListener('pointerdown', onLayerDown);
     io.observe(el);
   });
@@ -130,6 +145,7 @@ function buildDoc(){
 function renderPage(i){
   var p = S.pages[i];
   if (!p) return;
+  renderText(i);
   var target = S.zoom * DPR;
   if (p.busy || Math.abs(p.scale - target) < 0.001) return;
   p.busy = true;
@@ -142,6 +158,30 @@ function renderPage(i){
   p.pdf.render({ canvasContext:ctx, viewport:vp }).promise.then(function(){
     p.scale = target; p.busy = false;
   }).catch(function(){ p.busy = false; });
+}
+
+function renderText(i){
+  var p = S.pages[i];
+  if (!p || !p.text) return;
+  if (Math.abs(p.tscale - S.zoom) < 0.001) return;
+  p.tscale = S.zoom;
+
+  if (p.ttask && p.ttask.cancel){ try { p.ttask.cancel(); } catch(e){} }
+
+  var vp = p.pdf.getViewport({ scale:S.zoom });
+  p.el.style.setProperty('--scale-factor', String(S.zoom));
+
+  var src = p.tc ? Promise.resolve(p.tc) : p.pdf.getTextContent().then(function(tc){ p.tc = tc; return tc; });
+  src.then(function(tc){
+    if (Math.abs(p.tscale - S.zoom) > 0.001) return;
+    p.text.innerHTML = '';
+    var opts = { container:p.text, viewport:vp, textDivs:[] };
+    opts.textContentSource = tc;
+    opts.textContent = tc;
+    var task = pdfjsLib.renderTextLayer(opts);
+    p.ttask = task;
+    if (task && task.promise) task.promise.catch(function(){});
+  }).catch(function(){});
 }
 
 function applyZoom(){
@@ -216,10 +256,7 @@ function gotoPage(n, opts){
   if (opts && opts.render) renderPage(S.cur - 1);
 }
 
-function pageStep(d){
-  if (!S.cont){ gotoPage(S.cur + d); return; }
-  gotoPage(S.cur + d);
-}
+function pageStep(d){ gotoPage(S.cur + d); }
 
 function scrollBy(dy){
   var v = $('viewer');
@@ -270,7 +307,7 @@ function goDest(dest){
   if (!dest) return;
   var p = (typeof dest === 'string') ? S.doc.getDestination(dest) : Promise.resolve(dest);
   p.then(function(d){
-    if (!d || !d[0]) return;
+    if (!d || !d[0]) return null;
     return S.doc.getPageIndex(d[0]);
   }).then(function(idx){
     if (typeof idx === 'number') gotoPage(idx + 1, { render:true });
@@ -280,7 +317,7 @@ function goDest(dest){
 function toggleSide(force){
   var side = $('side');
   var open = (typeof force === 'boolean') ? force : side.hidden;
-  if (open && $('toc').disabled) { toast('This PDF has no bookmarks.'); return; }
+  if (open && $('toc').disabled){ toast('This PDF has no bookmarks.'); return; }
   side.hidden = !open;
   $('splitter').hidden = !open;
   $('toc').classList.toggle('on', open);
@@ -291,7 +328,8 @@ function toggleSide(force){
 function indexText(){
   if (S.find.indexed) return Promise.resolve();
   var jobs = S.pages.map(function(p){
-    return p.pdf.getTextContent().then(function(tc){
+    var src = p.tc ? Promise.resolve(p.tc) : p.pdf.getTextContent().then(function(tc){ p.tc = tc; return tc; });
+    return src.then(function(tc){
       var vp = p.pdf.getViewport({ scale:1 });
       p.items = tc.items.map(function(it){
         var m = pdfjsLib.Util.transform(vp.transform, it.transform);
@@ -375,8 +413,7 @@ function showHit(i){
   updateFindCount();
   var p = S.pages[h.p];
   var v = $('viewer');
-  var top = p.el.offsetTop + h.y * p.vh * S.zoom;
-  if (S.cont) v.scrollTop = Math.max(0, top - v.clientHeight * 0.35);
+  if (S.cont) v.scrollTop = Math.max(0, p.el.offsetTop + h.y * p.vh * S.zoom - v.clientHeight * 0.35);
   else v.scrollTop = Math.max(0, h.y * p.vh * S.zoom - v.clientHeight * 0.35);
 }
 
@@ -548,6 +585,7 @@ function onLayerDown(e){
   $('pagebox').value = String(S.cur);
 
   if (S.tool === 'hand'){ startPan(e); return; }
+  if (S.tool === 'pick') return;
   var r = layer.getBoundingClientRect();
   addAnn(pi, (e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height, S.tool);
 }
@@ -819,7 +857,7 @@ function useSignature(){
   toast('Click where the signature goes.');
 }
 
-/* ================= save ================= */
+/* ================= flatten, save, print ================= */
 function sanitize(s){
   return String(s)
     .replace(/[\u2018\u2019\u201A]/g, "'")
@@ -829,19 +867,13 @@ function sanitize(s){
     .replace(/[^\u0020-\u007E\u00A0-\u00FF]/g, '');
 }
 
-function save(){
-  if (!S.bytes) return;
-  var btn = $('dl');
-  var label = btn.innerHTML;
-  btn.disabled = true;
-  btn.textContent = 'Saving\u2026';
-
+function buildPdf(){
   var PDFDocument = PDFLIB.PDFDocument;
   var StandardFonts = PDFLIB.StandardFonts;
   var degrees = PDFLIB.degrees;
   var LineCapStyle = PDFLIB.LineCapStyle;
 
-  PDFDocument.load(S.bytes, { ignoreEncryption:true }).then(function(pdf){
+  return PDFDocument.load(S.bytes, { ignoreEncryption:true }).then(function(pdf){
     return pdf.embedFont(StandardFonts.Helvetica).then(function(font){
       var pages = pdf.getPages();
       var imgs = {};
@@ -910,18 +942,14 @@ function save(){
 
       return chain.then(function(){ return pdf.save(); });
     });
-  }).then(function(out){
-    var blob = new Blob([out], { type:'application/pdf' });
-    var url = URL.createObjectURL(blob);
-    var link = document.createElement('a');
-    link.href = url;
-    link.download = S.name.replace(/\.pdf$/i, '') + ' (signed).pdf';
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
-    toast('Saved.');
-  }).catch(function(err){
+  });
+}
+
+function busy(btn, text, job){
+  var label = btn.innerHTML;
+  btn.disabled = true;
+  btn.textContent = text;
+  return job().catch(function(err){
     console.error(err);
     toast('Could not write the PDF. ' + ((err && err.message) ? err.message : ''));
   }).then(function(){
@@ -930,12 +958,60 @@ function save(){
   });
 }
 
+function save(){
+  if (!S.bytes) return;
+  busy($('dl'), 'Saving\u2026', function(){
+    return buildPdf().then(function(out){
+      var blob = new Blob([out], { type:'application/pdf' });
+      var url = URL.createObjectURL(blob);
+      var link = document.createElement('a');
+      link.href = url;
+      link.download = S.name.replace(/\.pdf$/i, '') + ' (signed).pdf';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+      toast('Saved.');
+    });
+  });
+}
+
+function printDoc(){
+  if (!S.bytes) return;
+  busy($('printbtn'), '\u2026', function(){
+    return buildPdf().then(function(out){
+      var blob = new Blob([out], { type:'application/pdf' });
+      if (S.printUrl) URL.revokeObjectURL(S.printUrl);
+      S.printUrl = URL.createObjectURL(blob);
+      var frame = $('printframe');
+      frame.onload = function(){
+        setTimeout(function(){
+          try {
+            frame.contentWindow.focus();
+            frame.contentWindow.print();
+          } catch(err){
+            window.open(S.printUrl, '_blank');
+            toast('Opened the copy in a new tab to print.');
+          }
+        }, 250);
+      };
+      frame.src = S.printUrl;
+    });
+  });
+}
+
 /* ================= tools ================= */
 function setTool(t){
   if (t === 'sig' && !S.sig){ openSig(); return; }
   S.tool = t;
   each('.tool', function(b){ b.classList.toggle('on', b.dataset.tool === t); });
-  $('viewer').classList.toggle('hand', t === 'hand');
+  var v = $('viewer');
+  v.classList.toggle('hand', t === 'hand');
+  v.classList.toggle('pick-text', t === 'pick');
+  if (t !== 'pick'){
+    var s = window.getSelection();
+    if (s && s.rangeCount && !document.activeElement.isContentEditable) s.removeAllRanges();
+  }
 }
 
 function togglePresent(){
@@ -977,6 +1053,7 @@ $('ufile').addEventListener('change', function(e){
 });
 
 $('dl').addEventListener('click', save);
+$('printbtn').addEventListener('click', printDoc);
 $('zin').addEventListener('click', function(){ nudgeZoom(1.2); });
 $('zout').addEventListener('click', function(){ nudgeZoom(1/1.2); });
 $('zoomsel').addEventListener('change', function(e){ setZoomMode(e.target.value); });
@@ -1019,13 +1096,9 @@ $('pad').addEventListener('pointermove', padMove);
 $('pad').addEventListener('pointerup', padUp);
 $('pad').addEventListener('pointercancel', padUp);
 
-/* splitter */
 $('splitter').addEventListener('pointerdown', function(e){
   e.preventDefault();
-  function move(ev){
-    var w = clamp(ev.clientX, 120, window.innerWidth * 0.6);
-    $('side').style.width = w + 'px';
-  }
+  function move(ev){ $('side').style.width = clamp(ev.clientX, 120, window.innerWidth * 0.6) + 'px'; }
   function up(){
     window.removeEventListener('pointermove', move);
     window.removeEventListener('pointerup', up);
@@ -1035,7 +1108,6 @@ $('splitter').addEventListener('pointerdown', function(e){
   window.addEventListener('pointerup', up);
 });
 
-/* drag & drop */
 ['dragenter', 'dragover'].forEach(function(t){
   window.addEventListener(t, function(e){ e.preventDefault(); document.body.classList.add('dragover'); });
 });
@@ -1046,7 +1118,7 @@ window.addEventListener('drop', function(e){
   if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) openFile(e.dataTransfer.files[0]);
 });
 
-/* ================= keyboard (Sumatra-flavoured) ================= */
+/* ================= keyboard ================= */
 var TOOLKEYS = { '1':'text', '2':'check', '3':'cross', '4':'date', '5':'sig' };
 
 window.addEventListener('keydown', function(e){
@@ -1058,6 +1130,7 @@ window.addEventListener('keydown', function(e){
 
   if (ctrl && k.toLowerCase() === 'o'){ e.preventDefault(); $('file').click(); return; }
   if (ctrl && k.toLowerCase() === 's'){ e.preventDefault(); if (!$('dl').disabled) save(); return; }
+  if (ctrl && k.toLowerCase() === 'p'){ e.preventDefault(); if (!$('printbtn').disabled) printDoc(); return; }
   if (ctrl && k.toLowerCase() === 'z'){ e.preventDefault(); undo(); return; }
   if (ctrl && k.toLowerCase() === 'f'){ e.preventDefault(); $('findbox').focus(); $('findbox').select(); return; }
   if (ctrl && k.toLowerCase() === 'g'){ e.preventDefault(); $('pagebox').focus(); $('pagebox').select(); return; }
@@ -1092,6 +1165,7 @@ window.addEventListener('keydown', function(e){
     case 'w': e.preventDefault(); setZoomMode('fitw'); return;
     case 'z': e.preventDefault(); setZoomMode(S.zmode === 'fitp' ? 'fitw' : 'fitp'); return;
     case 'h': e.preventDefault(); setTool('hand'); return;
+    case 'v': e.preventDefault(); setTool('pick'); return;
     case '/': e.preventDefault(); $('findbox').focus(); return;
   }
   if (TOOLKEYS[k]){ e.preventDefault(); setTool(TOOLKEYS[k]); }
