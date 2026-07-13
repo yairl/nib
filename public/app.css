@@ -132,6 +132,21 @@ input,select{font:inherit; color:inherit}
 .viewer.hand .layer{cursor:grab}
 .viewer.hand .layer:active{cursor:grabbing}
 
+/* ---------------- form fields (AcroForm) ---------------- */
+.fieldlayer{position:absolute; inset:0; z-index:4; pointer-events:none}
+.fieldlayer .ff{position:absolute; pointer-events:auto; margin:0; font-family:Helvetica, Arial, sans-serif}
+.ff-text,.ff-area,.ff-select{
+  padding:0 2px; color:var(--ink); border:1px solid rgba(22,90,190,.4);
+  background:rgba(22,90,190,.07); border-radius:1px; line-height:1.1;
+}
+.ff-area{resize:none; overflow:hidden; padding:1px 2px}
+.ff-select{padding:0 1px}
+.ff-check{accent-color:var(--ink-blue); cursor:pointer}
+.ff:focus{outline:1px solid var(--ink-blue); outline-offset:0; background:rgba(22,90,190,.12)}
+.ff:disabled{background:rgba(120,120,120,.08); border-color:rgba(120,120,120,.3)}
+body.hidefields .fieldlayer{opacity:0; pointer-events:none}
+body.hidefields .fieldlayer .ff{pointer-events:none}
+
 /* ---------------- annotations ---------------- */
 .ann{position:absolute; touch-action:none}
 .ann .bd{
@@ -229,6 +244,24 @@ body.present .page{border-color:#000}
 .sigdel:hover{background:#f6d6d6}
 .signedout{text-align:center; padding:26px 12px}
 .signedout .open{margin-top:12px}
+
+/* ---------------- profile ---------------- */
+.profile{display:grid; grid-template-columns:1fr 1fr; gap:10px 12px}
+.pfield{display:flex; flex-direction:column; gap:3px}
+.pfield.wide{grid-column:1 / -1}
+.pfield label{color:var(--muted); font-size:11px}
+.pactions{grid-column:1 / -1; display:flex; justify-content:flex-end; margin-top:2px}
+
+/* ---------------- profile popover ---------------- */
+.popover{
+  position:fixed; z-index:65; min-width:150px; max-width:230px; padding:4px;
+  background:#fff; border:1px solid #9aa3ad; border-radius:4px;
+  box-shadow:0 6px 20px rgba(0,0,0,.28);
+}
+.popover .pophead{padding:4px 8px; color:var(--muted); border-bottom:1px solid #e2e2e2; margin-bottom:2px}
+.popitem{display:block; width:100%; text-align:left; padding:5px 8px; border-radius:3px; color:#22262c; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.popitem:hover{background:var(--hover)}
+.popitem .k{color:var(--muted); margin-right:6px}
 
 /* ---------------- toast ---------------- */
 .toast{

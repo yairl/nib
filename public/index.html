@@ -92,8 +92,14 @@
     <button class="tb" id="editsig" title="Change signature" aria-label="Change signature" hidden>
       <svg viewBox="0 0 16 16"><path d="M11.5 2.5l2 2L6 12l-2.5.5L4 10z"/></svg>
     </button>
+    <button class="tb tool" data-tool="profile" title="Auto-fill from profile (6)" aria-label="Profile">
+      <svg viewBox="0 0 16 16"><circle cx="8" cy="5" r="2.6"/><path d="M3 13.5c0-2.6 2.2-4 5-4s5 1.4 5 4"/><path d="M11.5 2.5l1.6 1.6"/></svg>
+    </button>
     <button class="swatch on" data-ink="#16325c" style="background:#16325c" title="Blue ink" aria-label="Blue ink"></button>
     <button class="swatch" data-ink="#14181c" style="background:#14181c" title="Black ink" aria-label="Black ink"></button>
+    <button class="tb" id="fieldtoggle" title="Toggle form field highlights" aria-label="Toggle form field highlights" hidden>
+      <svg viewBox="0 0 16 16"><rect x="2.5" y="4.5" width="11" height="7"/><path d="M5 8h6"/></svg>
+    </button>
   </div>
 
   <span class="grow"></span>
@@ -166,6 +172,7 @@
         <button class="on" data-tab="draw">Draw</button>
         <button data-tab="type">Type</button>
         <button data-tab="upload">Upload</button>
+        <button data-tab="profile">Profile</button>
       </div>
     </header>
 
@@ -196,6 +203,27 @@
       <div class="signedout" id="libsignedout" hidden>
         <div class="note">Sign in to store up to 20 signatures and reuse them anytime.</div>
         <button class="open small" id="libsignin">Sign in with Google</button>
+      </div>
+    </div>
+
+    <div class="pane" data-pane="profile">
+      <div class="profile" id="profileform">
+        <div class="pfield"><label for="pf-fullName">Full name</label><input class="field pf" id="pf-fullName" autocomplete="name"></div>
+        <div class="pfield"><label for="pf-email">Email</label><input class="field pf" id="pf-email" autocomplete="email"></div>
+        <div class="pfield"><label for="pf-phone">Phone</label><input class="field pf" id="pf-phone" autocomplete="tel"></div>
+        <div class="pfield"><label for="pf-initials">Initials</label><input class="field pf" id="pf-initials"></div>
+        <div class="pfield wide"><label for="pf-address">Address</label><input class="field pf" id="pf-address" autocomplete="street-address"></div>
+        <div class="pfield wide"><label for="pf-dateMode">Include today's date</label>
+          <select class="field pf" id="pf-dateMode">
+            <option value="today">Yes, offer today's date</option>
+            <option value="none">No</option>
+          </select>
+        </div>
+        <div class="pactions"><button class="open" id="profilesave">Save profile</button></div>
+      </div>
+      <div class="signedout" id="profilesignedout" hidden>
+        <div class="note">Sign in to save a reusable auto-fill profile.</div>
+        <button class="open small" id="profilesignin">Sign in with Google</button>
       </div>
     </div>
 
