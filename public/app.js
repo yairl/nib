@@ -674,13 +674,15 @@ var SIG_FONTS = [
 var sigDraft = null, typedFont = 0;
 var pad, pctx, drawing = false, hasInk = false, lastPt = null;
 
-function openSig(){
+function openSig(startTab){
   $('scrim').classList.add('open');
   paintFontOptions();
+  if (startTab) tab(startTab);
   renderLib();
   if (S.user) loadSaved();
   setTimeout(function(){ setupPad(); updateSigReady(); }, 30);
 }
+function openSigChooser(){ openSig('saved'); }
 function closeSig(){ $('scrim').classList.remove('open'); }
 
 function tab(name){
@@ -1151,7 +1153,7 @@ function printDoc(){
 
 /* ================= tools ================= */
 function setTool(t){
-  if (t === 'sig' && !S.sig){ openSig(); return; }
+  if (t === 'sig' && !S.sig){ openSigChooser(); return; }
   S.tool = t;
   each('.tool', function(b){ b.classList.toggle('on', b.dataset.tool === t); });
   var v = $('viewer');
@@ -1178,7 +1180,12 @@ function togglePresent(){
 }
 
 /* ================= wiring ================= */
-each('.tool', function(b){ b.addEventListener('click', function(){ setTool(b.dataset.tool); }); });
+each('.tool', function(b){
+  b.addEventListener('click', function(){
+    if (b.dataset.tool === 'sig') openSigChooser();
+    else setTool(b.dataset.tool);
+  });
+});
 each('.swatch', function(b){
   b.addEventListener('click', function(){
     S.ink = b.dataset.ink;
@@ -1188,7 +1195,7 @@ each('.swatch', function(b){
 });
 each('#tabs button', function(b){ b.addEventListener('click', function(){ tab(b.dataset.tab); }); });
 
-$('editsig').addEventListener('click', openSig);
+$('editsig').addEventListener('click', openSigChooser);
 $('openbtn').addEventListener('click', function(){ $('file').click(); });
 $('pick').addEventListener('click', function(){ $('file').click(); });
 $('file').addEventListener('change', function(e){
@@ -1334,7 +1341,11 @@ window.addEventListener('keydown', function(e){
     case 'v': e.preventDefault(); setTool('pick'); return;
     case '/': e.preventDefault(); $('findbox').focus(); return;
   }
-  if (TOOLKEYS[k]){ e.preventDefault(); setTool(TOOLKEYS[k]); }
+  if (TOOLKEYS[k]){
+    e.preventDefault();
+    if (TOOLKEYS[k] === 'sig') openSigChooser();
+    else setTool(TOOLKEYS[k]);
+  }
 });
 
 /* ================= scroll & resize ================= */
