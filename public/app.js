@@ -1060,7 +1060,13 @@ function loadAccount(){
   fetch('/xhost-auth/whoami', { credentials:'same-origin' })
     .then(function(r){ return r.json(); })
     .then(function(w){
-      if (w && w.logged_in){
+      var signedIn = !!(w && w.logged_in);
+      $('acctemail').hidden = !signedIn;
+      $('signout').hidden = !signedIn;
+      $('acctnote').hidden = signedIn;
+      $('acctsignin').hidden = signedIn;
+      $('acctmenu').hidden = true;
+      if (signedIn){
         S.user = { email:w.email || '', name:w.name || '' };
         $('acctlabel').textContent = 'Signed in as ' + (w.name || w.email || 'you');
         $('acctemail').textContent = w.email || '';
@@ -1071,7 +1077,6 @@ function loadAccount(){
         S.profile = null;
         $('acctlabel').textContent = 'Sign in';
         $('acctbtn').classList.remove('in');
-        $('acctmenu').hidden = true;
       }
       updateSigReady();
       if ($('scrim').classList.contains('open')){ renderLib(); renderProfile(); if (S.user) loadSaved(); }
@@ -1558,9 +1563,9 @@ each('.pf', function(el){ el.addEventListener('keydown', function(e){ e.stopProp
 
 $('acctbtn').addEventListener('click', function(e){
   e.stopPropagation();
-  if (S.user) $('acctmenu').hidden = !$('acctmenu').hidden;
-  else loginRedirect();
+  $('acctmenu').hidden = !$('acctmenu').hidden;
 });
+$('acctsignin').addEventListener('click', loginRedirect);
 $('signout').addEventListener('click', function(){ location.href = '/xhost-auth/logout?return_to=/'; });
 document.addEventListener('click', function(e){
   var acct = $('acct');

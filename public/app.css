@@ -71,10 +71,11 @@ input,select{font:inherit; color:inherit}
 .acctbtn #acctlabel{max-width:156px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .acctbtn.in svg{stroke:var(--ink-blue)}
 .acctmenu{
-  position:absolute; right:0; top:28px; min-width:160px; padding:4px;
+  position:absolute; right:0; top:28px; min-width:160px; max-width:240px; padding:4px;
   background:#fff; border:1px solid #9aa3ad; border-radius:3px;
   box-shadow:0 4px 14px rgba(0,0,0,.25); z-index:40;
 }
+.acctnote{padding:6px 8px; color:var(--muted); white-space:normal; line-height:1.35}
 .acctemail{padding:5px 8px; color:var(--muted); border-bottom:1px solid #e2e2e2; margin-bottom:2px; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .acctitem{display:block; width:100%; text-align:left; padding:6px 8px; border-radius:3px; color:#22262c}
 .acctitem:hover{background:var(--hover)}
