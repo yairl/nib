@@ -116,6 +116,19 @@
     <svg viewBox="0 0 16 16"><path d="M8 2v8m0 0L5 7m3 3l3-3M2.5 13.5h11"/></svg>
     <span>Save</span>
   </button>
+
+  <span class="sep"></span>
+
+  <div class="acct" id="acct">
+    <button class="tb acctbtn" id="acctbtn" title="Account" aria-label="Account">
+      <svg viewBox="0 0 16 16"><circle cx="8" cy="5" r="2.6"/><path d="M3 13.5c0-2.6 2.2-4 5-4s5 1.4 5 4"/></svg>
+      <span id="acctlabel">Sign in</span>
+    </button>
+    <div class="acctmenu" id="acctmenu" hidden>
+      <div class="acctemail" id="acctemail"></div>
+      <button class="acctitem" id="signout">Sign out</button>
+    </div>
+  </div>
 </div>
 
 <div class="main">
@@ -149,6 +162,7 @@
     <header>
       <h2>Signature</h2>
       <div class="tabs" id="tabs">
+        <button data-tab="saved">Saved</button>
         <button class="on" data-tab="draw">Draw</button>
         <button data-tab="type">Type</button>
         <button data-tab="upload">Upload</button>
@@ -176,9 +190,20 @@
       <div id="uprev"></div>
     </div>
 
+    <div class="pane" data-pane="saved">
+      <div class="siglib" id="siglib"></div>
+      <div class="siglibempty note" id="siglibempty" hidden>No saved signatures yet. Create one in Draw, Type, or Upload, then Save it here.</div>
+      <div class="signedout" id="libsignedout" hidden>
+        <div class="note">Sign in to store up to 20 signatures and reuse them anytime.</div>
+        <button class="open small" id="libsignin">Sign in with Google</button>
+      </div>
+    </div>
+
     <footer>
-      <span class="note">Kept for this session only.</span>
+      <span class="note" id="signote">Kept for this session only.</span>
       <span class="grow"></span>
+      <input class="field savename" id="savename" placeholder="Name it" autocomplete="off" hidden>
+      <button class="open ghost" id="sigsave" hidden disabled>Save</button>
       <button class="open ghost" id="sigcancel">Cancel</button>
       <button class="open" id="siguse" disabled>Use signature</button>
     </footer>

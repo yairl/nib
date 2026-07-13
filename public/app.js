@@ -33,7 +33,8 @@ var S = {
   tool:'text', ink:'#16325c',
   anns:[], els:{}, sel:null, sig:null, hist:[], seq:0,
   find:{ q:'', hits:[], i:-1, indexed:false },
-  printUrl:null
+  printUrl:null,
+  user:null, saved:[]
 };
 
 var CHECK_PATH = 'M 12 54 L 40 82 L 88 16';
@@ -676,6 +677,8 @@ var pad, pctx, drawing = false, hasInk = false, lastPt = null;
 function openSig(){
   $('scrim').classList.add('open');
   paintFontOptions();
+  renderLib();
+  if (S.user) loadSaved();
   setTimeout(function(){ setupPad(); updateSigReady(); }, 30);
 }
 function closeSig(){ $('scrim').classList.remove('open'); }
@@ -686,6 +689,7 @@ function tab(name){
   sigDraft = null;
   if (name === 'draw') setupPad();
   if (name === 'type') makeTyped();
+  if (name === 'saved') loadSaved();
   updateSigReady();
 }
 
@@ -834,27 +838,172 @@ function loadSigImage(file){
   img.src = url;
 }
 
+function currentSigCanvas(){
+  var active = document.querySelector('.pane.on');
+  var name = active ? active.dataset.pane : 'draw';
+  if (name === 'draw') return trim(pad);
+  if (name === 'saved') return null;
+  return sigDraft ? sigDraft.canvas : null;
+}
+
 function updateSigReady(){
   var active = document.querySelector('.pane.on');
   var name = active ? active.dataset.pane : 'draw';
-  $('siguse').disabled = (name === 'draw') ? !hasInk : !sigDraft;
+  var hasDraft = (name === 'draw') ? hasInk : (name === 'saved' ? false : !!sigDraft);
+  $('siguse').disabled = !hasDraft;
+
+  var canSave = !!S.user && hasDraft && name !== 'saved';
+  var nameBox = $('savename');
+  var saveBtn = $('sigsave');
+  nameBox.hidden = !canSave;
+  saveBtn.hidden = !canSave;
+  saveBtn.disabled = !canSave;
+
+  var note = $('signote');
+  if (note) note.textContent = S.user
+    ? 'Signatures you save are stored to your account for reuse.'
+    : 'Kept for this session only. Sign in to save signatures.';
 }
 
-function useSignature(){
-  var active = document.querySelector('.pane.on').dataset.pane;
-  var canvas = (active === 'draw') ? trim(pad) : (sigDraft ? sigDraft.canvas : null);
-  if (!canvas){ toast('Nothing to save yet.'); return; }
-  S.sig = { src:canvas.toDataURL('image/png'), aspect:canvas.width / canvas.height };
+function setSigIcon(src){
   var icon = $('sigicon');
   icon.innerHTML = '';
   var thumb = new Image();
-  thumb.src = S.sig.src;
+  thumb.src = src;
   thumb.className = 'sigthumb';
   icon.appendChild(thumb);
   $('editsig').hidden = false;
+}
+
+function useSignature(){
+  var canvas = currentSigCanvas();
+  if (!canvas){ toast('Nothing to save yet.'); return; }
+  S.sig = { src:canvas.toDataURL('image/png'), aspect:canvas.width / canvas.height };
+  setSigIcon(S.sig.src);
   closeSig();
   setTool('sig');
   toast('Click where the signature goes.');
+}
+
+/* ============ account & saved signatures ============ */
+function loginRedirect(){
+  location.href = '/xhost-auth/login?return_to=' + encodeURIComponent(location.pathname + location.search);
+}
+
+function loadAccount(){
+  fetch('/xhost-auth/whoami', { credentials:'same-origin' })
+    .then(function(r){ return r.json(); })
+    .then(function(w){
+      if (w && w.logged_in){
+        S.user = { email:w.email || '', name:w.name || '' };
+        $('acctlabel').textContent = 'Signed in as ' + (w.name || w.email || 'you');
+        $('acctemail').textContent = w.email || '';
+        $('acctbtn').classList.add('in');
+      } else {
+        S.user = null;
+        $('acctlabel').textContent = 'Sign in';
+        $('acctbtn').classList.remove('in');
+        $('acctmenu').hidden = true;
+      }
+      updateSigReady();
+      if ($('scrim').classList.contains('open')){ renderLib(); if (S.user) loadSaved(); }
+    })
+    .catch(function(){});
+}
+
+function loadSaved(){
+  if (!S.user){ S.saved = []; renderLib(); return; }
+  fetch('/api/signatures', { credentials:'same-origin' })
+    .then(function(r){ return r.ok ? r.json() : { signatures:[] }; })
+    .then(function(d){ S.saved = (d && d.signatures) || []; renderLib(); })
+    .catch(function(){ renderLib(); });
+}
+
+function renderLib(){
+  var box = $('siglib');
+  var signedOut = $('libsignedout');
+  var emptyNote = $('siglibempty');
+  box.innerHTML = '';
+  if (!S.user){
+    box.hidden = true; emptyNote.hidden = true; signedOut.hidden = false; return;
+  }
+  signedOut.hidden = true;
+  box.hidden = false;
+  if (!S.saved.length){ emptyNote.hidden = false; return; }
+  emptyNote.hidden = true;
+  S.saved.forEach(function(s){
+    var it = document.createElement('div');
+    it.className = 'sigitem';
+    it.title = 'Use ' + s.name;
+
+    var del = document.createElement('button');
+    del.className = 'sigdel';
+    del.title = 'Delete';
+    del.innerHTML = '×';
+    del.addEventListener('click', function(e){ e.stopPropagation(); deleteSaved(s.id); });
+
+    var img = new Image();
+    img.src = s.src; img.alt = s.name;
+
+    var cap = document.createElement('div');
+    cap.className = 'signame';
+    cap.textContent = s.name;
+
+    it.appendChild(del);
+    it.appendChild(img);
+    it.appendChild(cap);
+    it.addEventListener('click', function(){ useSaved(s); });
+    box.appendChild(it);
+  });
+}
+
+function useSaved(s){
+  S.sig = { src:s.src, aspect:s.aspect };
+  setSigIcon(s.src);
+  closeSig();
+  setTool('sig');
+  toast('Click where the signature goes.');
+}
+
+function deleteSaved(id){
+  fetch('/api/signatures/' + id, { method:'DELETE', credentials:'same-origin' })
+    .then(function(r){
+      if (r.ok || r.status === 404){
+        S.saved = S.saved.filter(function(x){ return x.id !== id; });
+        renderLib();
+        toast('Signature deleted.');
+      } else {
+        toast('Could not delete.');
+      }
+    })
+    .catch(function(){ toast('Could not delete.'); });
+}
+
+function saveCurrent(){
+  if (!S.user){ loginRedirect(); return; }
+  var canvas = currentSigCanvas();
+  if (!canvas){ toast('Nothing to save yet.'); return; }
+  var name = ($('savename').value || $('typed').value || '').trim() || 'Signature';
+  var src = canvas.toDataURL('image/png');
+  var btn = $('sigsave');
+  btn.disabled = true;
+  fetch('/api/signatures', {
+    method:'POST', credentials:'same-origin',
+    headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify({ name:name, dataUrl:src })
+  }).then(function(r){
+    if (r.status === 401){ loginRedirect(); return null; }
+    if (r.status === 409){ toast('You can store up to 20 signatures.'); return null; }
+    if (!r.ok){ return r.json().then(function(e){ toast(e && e.error ? e.error : 'Could not save signature.'); return null; }); }
+    return r.json();
+  }).then(function(d){
+    btn.disabled = false;
+    if (!d) return;
+    $('savename').value = '';
+    toast('Signature saved.');
+    loadSaved();
+    tab('saved');
+  }).catch(function(){ btn.disabled = false; toast('Could not save signature.'); });
 }
 
 /* ================= flatten, save, print ================= */
@@ -1088,6 +1237,23 @@ $('findprev').addEventListener('click', function(){ findStep(-1); });
 $('scrim').addEventListener('pointerdown', function(e){ if (e.target === $('scrim')) closeSig(); });
 $('sigcancel').addEventListener('click', closeSig);
 $('siguse').addEventListener('click', useSignature);
+$('sigsave').addEventListener('click', saveCurrent);
+$('savename').addEventListener('keydown', function(e){
+  e.stopPropagation();
+  if (e.key === 'Enter'){ e.preventDefault(); saveCurrent(); }
+});
+$('libsignin').addEventListener('click', loginRedirect);
+
+$('acctbtn').addEventListener('click', function(e){
+  e.stopPropagation();
+  if (S.user) $('acctmenu').hidden = !$('acctmenu').hidden;
+  else loginRedirect();
+});
+$('signout').addEventListener('click', function(){ location.href = '/xhost-auth/logout?return_to=/'; });
+document.addEventListener('click', function(e){
+  var acct = $('acct');
+  if (acct && !acct.contains(e.target)) $('acctmenu').hidden = true;
+});
 $('padclear').addEventListener('click', function(){ setupPad(); updateSigReady(); });
 $('typed').addEventListener('input', makeTyped);
 $('typed').addEventListener('keydown', function(e){ e.stopPropagation(); });
@@ -1202,5 +1368,6 @@ document.addEventListener('fullscreenchange', function(){
 });
 
 setTool('text');
+loadAccount();
 
 })();

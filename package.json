@@ -5,5 +5,10 @@
   "description": "Inkwell - fill and sign PDFs in the browser",
   "main": "server.js",
   "engines": { "node": ">=18" },
-  "scripts": { "start": "node server.js" }
+  "scripts": { "start": "node server.js" },
+  "dependencies": {
+    "pg": "^8.11.5",
+    "jsonwebtoken": "^9.0.2",
+    "jwks-rsa": "^3.1.0"
+  }
 }
