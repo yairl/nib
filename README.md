@@ -27,7 +27,7 @@ Four document-level tools, all 100% client-side (nothing uploaded):
 
 - `server.js` - Node static server plus login-gated `/api/signatures` and
   `/api/profile` APIs. The whole app works without an account; signing in
-  (Google sign-in via xhost) just lets you store up to 20 named signatures and a
+  (Google sign-in via xhost) just lets you store up to 50 named signatures and a
   reusable auto-fill profile (name, email, address, phone, initials, date
   preference) in Postgres. xhost provides login/identity only — not path
   protection — so the app enforces access itself: every data path requires a

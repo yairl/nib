@@ -1271,7 +1271,7 @@ function saveCurrent(){
     body: JSON.stringify({ name:name, dataUrl:src })
   }).then(function(r){
     if (r.status === 401){ loginRedirect(); return null; }
-    if (r.status === 409){ toast('You can store up to 20 signatures.'); return null; }
+    if (r.status === 409){ toast('You can store up to 50 signatures.'); return null; }
     if (!r.ok){ return r.json().then(function(e){ toast(e && e.error ? e.error : 'Could not save signature.'); return null; }); }
     return r.json();
   }).then(function(d){
