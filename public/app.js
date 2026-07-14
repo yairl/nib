@@ -18,12 +18,12 @@ function toast(msg){
 
 if (typeof window.pdfjsLib === 'undefined' || typeof window.PDFLib === 'undefined'){
   var dz = $('drop');
-  if (dz) dz.innerHTML = '<h1>Blocked</h1><p>The PDF engine could not load. Something is blocking cdnjs.cloudflare.com. Allow it and reload.</p>';
+  if (dz) dz.innerHTML = '<h1>Blocked</h1><p>The PDF engine could not load. A browser extension or setting is blocking scripts on this page. Allow it and reload.</p>';
   return;
 }
 
 var PDFLIB = window.PDFLib;
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+pdfjsLib.GlobalWorkerOptions.workerSrc = '/vendor/pdf.worker.min.js';
 
 var DPR = Math.min(window.devicePixelRatio || 1, 2);
 
