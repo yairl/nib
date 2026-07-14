@@ -179,11 +179,13 @@ function renderText(i){
 
   var vp = p.pdf.getViewport({ scale:S.zoom });
   p.el.style.setProperty('--scale-factor', String(S.zoom));
+  p.text.style.setProperty('--scale-factor', String(S.zoom));
 
   var src = p.tc ? Promise.resolve(p.tc) : p.pdf.getTextContent().then(function(tc){ p.tc = tc; return tc; });
   src.then(function(tc){
     if (Math.abs(p.tscale - S.zoom) > 0.001) return;
     p.text.innerHTML = '';
+    p.text.style.setProperty('--scale-factor', String(S.zoom));
     var opts = { container:p.text, viewport:vp, textDivs:[] };
     opts.textContentSource = tc;
     opts.textContent = tc;
