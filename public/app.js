@@ -96,6 +96,9 @@ function load(data){
     $('empty').hidden = true;
     $('dl').disabled = false;
     $('printbtn').disabled = false;
+    $('mergebtn').disabled = false;
+    $('splitbtn').disabled = false;
+    $('reducebtn').disabled = false;
     $('pagecount').textContent = 'of ' + S.pages.length;
     S.cur = 1;
     $('pagebox').value = '1';
@@ -464,7 +467,46 @@ function addAnn(pi, nx, ny, type, presetText){
   return a;
 }
 
+var GRIP_SVG = '<svg viewBox="0 0 16 16"><circle cx="6" cy="4" r="1.2"/><circle cx="10" cy="4" r="1.2"/><circle cx="6" cy="8" r="1.2"/><circle cx="10" cy="8" r="1.2"/><circle cx="6" cy="12" r="1.2"/><circle cx="10" cy="12" r="1.2"/></svg>';
+var DEL_SVG = '<svg viewBox="0 0 16 16"><path d="M3 4.5h10M6.5 7.5v4M9.5 7.5v4M4 4.5l.8 8.5h6.4l.8-8.5M6 4.5V2.5h4v2"/></svg>';
+
+function buildRedact(a){
+  var wrap = document.createElement('div');
+  wrap.className = 'ann redact';
+  wrap.dataset.id = a.id;
+
+  var bd = document.createElement('div');
+  bd.className = 'bd';
+  wrap.appendChild(bd);
+
+  var chip = document.createElement('div');
+  chip.className = 'chip';
+  chip.innerHTML =
+    '<button class="grip" title="Drag to move">' + GRIP_SVG + '</button>' +
+    '<div class="sep"></div>' +
+    '<button class="del" title="Delete">' + DEL_SVG + '</button>';
+  wrap.appendChild(chip);
+
+  var del = chip.querySelector('.del');
+  del.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
+  del.addEventListener('click', function(e){ e.stopPropagation(); removeAnn(a.id); });
+  chip.querySelector('.grip').addEventListener('pointerdown', function(e){ startDrag(e, a, true); });
+
+  var rz = document.createElement('div');
+  rz.className = 'rz';
+  rz.addEventListener('pointerdown', function(e){ startRedactResize(e, a); });
+  wrap.appendChild(rz);
+
+  wrap.addEventListener('pointerdown', function(e){ onAnnDown(e, a); });
+
+  S.pages[a.p].layer.appendChild(wrap);
+  S.els[a.id] = wrap;
+  styleAnn(a);
+  return wrap;
+}
+
 function buildAnn(a){
+  if (a.type === 'redact') return buildRedact(a);
   var wrap = document.createElement('div');
   wrap.className = 'ann ' + (a.type === 'sig' ? 'sig' : ((a.type === 'check' || a.type === 'cross') ? 'mark' : 'txt'));
   wrap.dataset.id = a.id;
@@ -531,6 +573,13 @@ function styleAnn(a){
   var wpx = p.vw * S.zoom, hpx = p.vh * S.zoom;
   el.style.left = (a.x * wpx) + 'px';
   el.style.top = (a.y * hpx) + 'px';
+
+  if (a.type === 'redact'){
+    el.style.width = (a.w * wpx) + 'px';
+    el.style.height = (a.h * hpx) + 'px';
+    return;
+  }
+
   var bd = el.querySelector('.bd');
 
   if (a.type === 'text' || a.type === 'date'){
@@ -750,6 +799,7 @@ function onLayerDown(e){
   var r = layer.getBoundingClientRect();
   var nx = (e.clientX - r.left) / r.width, ny = (e.clientY - r.top) / r.height;
   if (S.tool === 'profile'){ openProfilePopover(pi, nx, ny, e.clientX, e.clientY); return; }
+  if (S.tool === 'redact'){ startRedactDraw(e, pi, layer, nx, ny); return; }
   addAnn(pi, nx, ny, S.tool);
 }
 
@@ -804,6 +854,59 @@ function startDrag(e, a, force){
       bd.focus();
       placeCaret(bd, ev.clientX, ev.clientY);
     }
+  }
+  window.addEventListener('pointermove', move, { passive:false });
+  window.addEventListener('pointerup', up);
+}
+
+function startRedactDraw(e, pi, layer, nx, ny){
+  e.preventDefault();
+  var r = layer.getBoundingClientRect();
+  var sx = nx, sy = ny;
+  var a = { id:'a' + (++S.seq), p:pi, type:'redact', x:nx, y:ny, w:0, h:0, color:'#000' };
+  snapshot();
+  S.anns.push(a);
+  var el = buildRedact(a);
+  el.classList.add('drawing');
+  select(a.id);
+
+  function move(ev){
+    ev.preventDefault();
+    var cx = clamp((ev.clientX - r.left) / r.width, 0, 1);
+    var cy = clamp((ev.clientY - r.top) / r.height, 0, 1);
+    a.x = Math.min(sx, cx); a.y = Math.min(sy, cy);
+    a.w = Math.abs(cx - sx); a.h = Math.abs(cy - sy);
+    styleAnn(a);
+  }
+  function up(){
+    window.removeEventListener('pointermove', move);
+    window.removeEventListener('pointerup', up);
+    el.classList.remove('drawing');
+    if (a.w < 0.008 || a.h < 0.008){ removeAnn(a.id); return; }
+    select(a.id);
+  }
+  window.addEventListener('pointermove', move, { passive:false });
+  window.addEventListener('pointerup', up);
+}
+
+function startRedactResize(e, a){
+  e.stopPropagation();
+  e.preventDefault();
+  var r = S.pages[a.p].layer.getBoundingClientRect();
+  var ox = a.x, oy = a.y;
+  var moved = false;
+  function move(ev){
+    ev.preventDefault();
+    if (!moved){ moved = true; snapshot(); }
+    var cx = clamp((ev.clientX - r.left) / r.width, 0, 1);
+    var cy = clamp((ev.clientY - r.top) / r.height, 0, 1);
+    a.w = clamp(cx - ox, 0.005, 1 - ox);
+    a.h = clamp(cy - oy, 0.005, 1 - oy);
+    styleAnn(a);
+  }
+  function up(){
+    window.removeEventListener('pointermove', move);
+    window.removeEventListener('pointerup', up);
   }
   window.addEventListener('pointermove', move, { passive:false });
   window.addEventListener('pointerup', up);
@@ -1336,6 +1439,7 @@ function buildPdf(){
         chain = chain.then(function(){
           var page = pages[a.p];
           if (!page) return null;
+          if (a.type === 'redact') return null; // baked destructively in rebuildDocument, never as vector
           var sz = page.getSize();
           var W = sz.width, H = sz.height;
           var rot = ((page.getRotation().angle % 360) + 360) % 360;
@@ -1398,6 +1502,107 @@ function buildPdf(){
   });
 }
 
+/* ================= document tools (redact / merge / split / reduce) ================= */
+function downloadBytes(bytes, filename){
+  var blob = new Blob([bytes], { type:'application/pdf' });
+  var url = URL.createObjectURL(blob);
+  var link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+}
+
+// Build a redaction map { pageIndex: [ {x,y,w,h} normalized ] } from S.anns, or null.
+function redactMapFromAnns(){
+  var map = {}, any = false;
+  S.anns.forEach(function(a){
+    if (a.type !== 'redact') return;
+    any = true;
+    (map[a.p] = map[a.p] || []).push({ x:a.x, y:a.y, w:a.w, h:a.h });
+  });
+  return any ? map : null;
+}
+
+// Rebuild a document, RASTERIZING selected pages so their original text/vector
+// content is destroyed (not merely covered). Pages that are neither redacted
+// nor force-rasterized are copied verbatim so their text stays selectable.
+// This is the guarantee that redacted content is not discoverable.
+function rebuildDocument(baseBytes, opts){
+  opts = opts || {};
+  var redactMap = opts.redactMap || {};
+  var rasterizeAll = !!opts.rasterizeAll;
+  var scale = opts.scale || 2;
+  var quality = (opts.quality != null) ? opts.quality : 0.85;
+  var PDFDocument = PDFLIB.PDFDocument;
+  var pdfjsDoc, srcDoc, outDoc;
+
+  return pdfjsLib.getDocument({ data:baseBytes.slice(0) }).promise.then(function(d){
+    pdfjsDoc = d;
+    return PDFDocument.load(baseBytes, { ignoreEncryption:true });
+  }).then(function(s){
+    srcDoc = s;
+    return PDFDocument.create();
+  }).then(function(o){
+    outDoc = o;
+    var n = pdfjsDoc.numPages;
+    var chain = Promise.resolve();
+    for (var i = 0; i < n; i++){
+      (function(idx){
+        chain = chain.then(function(){
+          var rects = redactMap[idx];
+          var needRaster = rasterizeAll || (rects && rects.length);
+          if (!needRaster){
+            return outDoc.copyPages(srcDoc, [idx]).then(function(cp){ outDoc.addPage(cp[0]); });
+          }
+          return pdfjsDoc.getPage(idx + 1).then(function(pg){
+            var vp = pg.getViewport({ scale:scale });
+            var canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.floor(vp.width));
+            canvas.height = Math.max(1, Math.floor(vp.height));
+            var ctx = canvas.getContext('2d', { alpha:false });
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            return pg.render({ canvasContext:ctx, viewport:vp }).promise.then(function(){
+              if (rects && rects.length){
+                ctx.fillStyle = '#000';
+                rects.forEach(function(r){
+                  ctx.fillRect(r.x * canvas.width, r.y * canvas.height, r.w * canvas.width, r.h * canvas.height);
+                });
+              }
+              var jpg = canvas.toDataURL('image/jpeg', quality);
+              return outDoc.embedJpg(jpg).then(function(img){
+                var vp1 = pg.getViewport({ scale:1 });
+                var page = outDoc.addPage([vp1.width, vp1.height]);
+                page.drawImage(img, { x:0, y:0, width:vp1.width, height:vp1.height });
+              });
+            });
+          });
+        });
+      })(i);
+    }
+    return chain;
+  }).then(function(){ return outDoc.save(); });
+}
+
+// buildPdf bakes fills + annotations (skipping redaction boxes); this wrapper
+// then destructively rasterizes any redacted pages.
+function buildOutput(){
+  return buildPdf().then(function(out){
+    var map = redactMapFromAnns();
+    if (!map) return out;
+    return rebuildDocument(out, { redactMap:map, scale:2, quality:0.85 });
+  });
+}
+
+function fmtSize(n){
+  if (n < 1024) return n + ' B';
+  if (n < 1024 * 1024) return (n / 1024).toFixed(0) + ' KB';
+  return (n / 1024 / 1024).toFixed(2) + ' MB';
+}
+
 function busy(btn, text, job){
   var label = btn.innerHTML;
   btn.disabled = true;
@@ -1414,16 +1619,8 @@ function busy(btn, text, job){
 function save(){
   if (!S.bytes) return;
   busy($('dl'), 'Saving\u2026', function(){
-    return buildPdf().then(function(out){
-      var blob = new Blob([out], { type:'application/pdf' });
-      var url = URL.createObjectURL(blob);
-      var link = document.createElement('a');
-      link.href = url;
-      link.download = S.name.replace(/\.pdf$/i, '') + ' (signed).pdf';
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+    return buildOutput().then(function(out){
+      downloadBytes(out, S.name.replace(/\.pdf$/i, '') + ' (signed).pdf');
       toast('Saved.');
     });
   });
@@ -1432,7 +1629,7 @@ function save(){
 function printDoc(){
   if (!S.bytes) return;
   busy($('printbtn'), '\u2026', function(){
-    return buildPdf().then(function(out){
+    return buildOutput().then(function(out){
       var blob = new Blob([out], { type:'application/pdf' });
       if (S.printUrl) URL.revokeObjectURL(S.printUrl);
       S.printUrl = URL.createObjectURL(blob);
@@ -1451,6 +1648,169 @@ function printDoc(){
       frame.src = S.printUrl;
     });
   });
+}
+
+/* ================= document ops ================= */
+function reopenBytes(bytes, name){
+  S.bytes = bytes;
+  if (name) S.name = name;
+  S.anns = []; S.els = {}; S.sel = null; S.hist = []; S.fields = [];
+  S.find = { q:'', hits:[], i:-1, indexed:false };
+  $('findbox').value = '';
+  $('findcount').textContent = '';
+  load(new Uint8Array(bytes.slice(0)));
+}
+
+function readFileBytes(file){
+  return new Promise(function(resolve, reject){
+    var fr = new FileReader();
+    fr.onload = function(){ resolve(new Uint8Array(fr.result)); };
+    fr.onerror = function(){ reject(new Error('Could not read ' + (file.name || 'file'))); };
+    fr.readAsArrayBuffer(file);
+  });
+}
+
+function mergeAppend(files){
+  files = Array.prototype.slice.call(files || []).filter(function(f){
+    return (f.type && f.type.indexOf('pdf') !== -1) || /\.pdf$/i.test(f.name || '');
+  });
+  if (!files.length){ toast('No PDF files selected.'); return; }
+  var PDFDocument = PDFLIB.PDFDocument;
+  busy($('mergebtn'), 'Merging…', function(){
+    var baseDoc, added = 0;
+    return buildOutput().then(function(base){
+      return PDFDocument.load(base, { ignoreEncryption:true });
+    }).then(function(d){
+      baseDoc = d;
+      var chain = Promise.resolve();
+      files.forEach(function(f){
+        chain = chain.then(function(){ return readFileBytes(f); }).then(function(bytes){
+          if (String.fromCharCode.apply(null, bytes.subarray(0, 4)) !== '%PDF'){
+            throw new Error((f.name || 'A file') + ' is not a valid PDF.');
+          }
+          return PDFDocument.load(bytes, { ignoreEncryption:true }).then(function(src){
+            return baseDoc.copyPages(src, src.getPageIndices());
+          }).then(function(pages){
+            pages.forEach(function(p){ baseDoc.addPage(p); });
+            added += pages.length;
+          });
+        });
+      });
+      return chain;
+    }).then(function(){
+      return baseDoc.save({ useObjectStreams:true });
+    }).then(function(merged){
+      reopenBytes(new Uint8Array(merged));
+      toast('Merged — added ' + added + ' page' + (added === 1 ? '' : 's') + '.');
+    });
+  });
+}
+
+function parsePageRange(str, total){
+  var out = [], seen = {};
+  (str || '').split(',').forEach(function(part){
+    part = part.trim();
+    if (!part) return;
+    var m = part.match(/^(\d+)\s*-\s*(\d+)$/);
+    if (m){
+      var a = +m[1], b = +m[2];
+      if (a > b){ var t = a; a = b; b = t; }
+      for (var i = a; i <= b; i++) if (i >= 1 && i <= total && !seen[i]){ seen[i] = 1; out.push(i - 1); }
+    } else if (/^\d+$/.test(part)){
+      var n = +part;
+      if (n >= 1 && n <= total && !seen[n]){ seen[n] = 1; out.push(n - 1); }
+    }
+  });
+  return out;
+}
+
+function splitExtract(indices){
+  var PDFDocument = PDFLIB.PDFDocument;
+  busy($('splitgo'), 'Extracting…', function(){
+    var outDoc;
+    return buildOutput().then(function(base){
+      return PDFDocument.load(base, { ignoreEncryption:true });
+    }).then(function(src){
+      return PDFDocument.create().then(function(o){
+        outDoc = o;
+        return outDoc.copyPages(src, indices);
+      });
+    }).then(function(pages){
+      pages.forEach(function(p){ outDoc.addPage(p); });
+      return outDoc.save({ useObjectStreams:true });
+    }).then(function(bytes){
+      var label = indices.length === 1 ? ('page ' + (indices[0] + 1)) : (indices.length + ' pages');
+      downloadBytes(new Uint8Array(bytes), S.name.replace(/\.pdf$/i, '') + ' (' + label + ').pdf');
+      closeSplit();
+      toast('Extracted ' + indices.length + ' page' + (indices.length === 1 ? '' : 's') + '.');
+    });
+  });
+}
+
+function reduceLossless(){
+  var PDFDocument = PDFLIB.PDFDocument;
+  return buildOutput().then(function(base){
+    return PDFDocument.load(base, { ignoreEncryption:true });
+  }).then(function(src){
+    try {
+      src.setTitle(''); src.setAuthor(''); src.setSubject('');
+      src.setKeywords([]); src.setProducer(''); src.setCreator('');
+    } catch(e){}
+    return src.save({ useObjectStreams:true });
+  });
+}
+
+function reduceStrong(quality){
+  return buildOutput().then(function(base){
+    return rebuildDocument(base, { rasterizeAll:true, scale:1.5, quality:quality });
+  });
+}
+
+function runReduce(mode, quality){
+  var before = S.bytes.length;
+  busy($('reducego'), 'Reducing…', function(){
+    var job = (mode === 'strong') ? reduceStrong(quality) : reduceLossless();
+    return job.then(function(bytes){
+      var out = new Uint8Array(bytes);
+      downloadBytes(out, S.name.replace(/\.pdf$/i, '') + ' (reduced).pdf');
+      closeReduce();
+      var delta = before - out.length;
+      if (delta > 0){
+        toast('Reduced ' + fmtSize(before) + ' → ' + fmtSize(out.length) +
+          ' (' + Math.round(delta / before * 100) + '% smaller).');
+      } else {
+        toast('Already compact: ' + fmtSize(before) + ' → ' + fmtSize(out.length) + '.');
+      }
+    });
+  });
+}
+
+/* split / reduce dialogs */
+function openSplit(){
+  if (!S.bytes) return;
+  $('splithint').textContent = 'This document has ' + S.pages.length +
+    ' page' + (S.pages.length === 1 ? '' : 's') + '. The current document stays open.';
+  $('splitrange').value = '';
+  $('splitscrim').classList.add('open');
+  setTimeout(function(){ $('splitrange').focus(); }, 30);
+}
+function closeSplit(){ $('splitscrim').classList.remove('open'); }
+function doSplit(){
+  var idx = parsePageRange($('splitrange').value, S.pages.length);
+  if (!idx.length){ toast('Enter a valid page range, e.g. 1-3, 5.'); return; }
+  splitExtract(idx);
+}
+
+function openReduce(){
+  if (!S.bytes) return;
+  $('reducescrim').classList.add('open');
+}
+function closeReduce(){ $('reducescrim').classList.remove('open'); }
+function doReduce(){
+  var mode = 'lossless';
+  each('input[name=reducemode]', function(r){ if (r.checked) mode = r.value; });
+  var q = (+$('reducequality').value || 60) / 100;
+  runReduce(mode, q);
 }
 
 /* ================= tools ================= */
@@ -1513,6 +1873,32 @@ $('ufile').addEventListener('change', function(e){
 
 $('dl').addEventListener('click', save);
 $('printbtn').addEventListener('click', printDoc);
+
+$('mergebtn').addEventListener('click', function(){ $('mergefile').click(); });
+$('mergefile').addEventListener('change', function(e){
+  if (e.target.files && e.target.files.length) mergeAppend(e.target.files);
+  e.target.value = '';
+});
+$('splitbtn').addEventListener('click', openSplit);
+$('splitcancel').addEventListener('click', closeSplit);
+$('splitgo').addEventListener('click', doSplit);
+$('splitscrim').addEventListener('pointerdown', function(e){ if (e.target === $('splitscrim')) closeSplit(); });
+$('splitrange').addEventListener('keydown', function(e){
+  e.stopPropagation();
+  if (e.key === 'Enter'){ e.preventDefault(); doSplit(); }
+});
+$('reducebtn').addEventListener('click', openReduce);
+$('reducecancel').addEventListener('click', closeReduce);
+$('reducego').addEventListener('click', doReduce);
+$('reducescrim').addEventListener('pointerdown', function(e){ if (e.target === $('reducescrim')) closeReduce(); });
+each('input[name=reducemode]', function(r){
+  r.addEventListener('change', function(){
+    $('strongopts').hidden = ($('reducescrim').querySelector('input[name=reducemode]:checked').value !== 'strong');
+  });
+});
+$('reducequality').addEventListener('input', function(e){
+  $('reduceqval').textContent = e.target.value + '%';
+});
 $('zin').addEventListener('click', function(){ nudgeZoom(1.2); });
 $('zout').addEventListener('click', function(){ nudgeZoom(1/1.2); });
 $('zoomsel').addEventListener('change', function(e){ setZoomMode(e.target.value); });
@@ -1602,7 +1988,7 @@ window.addEventListener('drop', function(e){
 });
 
 /* ================= keyboard ================= */
-var TOOLKEYS = { '1':'text', '2':'check', '3':'cross', '4':'date', '5':'sig', '6':'profile' };
+var TOOLKEYS = { '1':'text', '2':'check', '3':'cross', '4':'date', '5':'sig', '6':'profile', 'r':'redact' };
 
 window.addEventListener('keydown', function(e){
   var ae = document.activeElement;
@@ -1621,6 +2007,8 @@ window.addEventListener('keydown', function(e){
 
   if (k === 'Escape'){
     if ($('profilepop')) closePopover();
+    else if ($('splitscrim').classList.contains('open')) closeSplit();
+    else if ($('reducescrim').classList.contains('open')) closeReduce();
     else if ($('scrim').classList.contains('open')) closeSig();
     else if (document.body.classList.contains('present')) togglePresent();
     else select(null);

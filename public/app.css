@@ -175,6 +175,19 @@ body.hidefields .fieldlayer .ff{pointer-events:none}
 .chip .grip svg{fill:currentColor; stroke:none}
 .chip .sep{width:1px; height:13px; background:#b8bec6; margin:0 2px}
 
+/* ---------------- redaction ---------------- */
+.ann.redact{touch-action:none}
+.ann.redact .bd{width:100%; height:100%; min-width:0; min-height:0; background:#000; cursor:move}
+.ann.redact::before{inset:-1px}
+.ann.redact.sel::before{background:transparent}
+.ann.redact.drawing .bd{opacity:.65}
+.ann.redact .rz{
+  position:absolute; right:-5px; bottom:-5px; width:12px; height:12px;
+  background:#fff; border:1px solid var(--ink-blue); border-radius:2px;
+  cursor:nwse-resize; display:none; z-index:6;
+}
+.ann.redact.sel .rz{display:block}
+
 /* ---------------- empty state ---------------- */
 .empty{position:absolute; inset:0; display:grid; place-items:center; padding:20px}
 .drop{
@@ -228,6 +241,18 @@ body.present .page{border-color:#000}
 #uprev img{max-height:84px; max-width:100%}
 .modal footer{display:flex; align-items:center; gap:8px; padding:8px 10px; border-top:1px solid var(--chrome-line)}
 .savename{width:130px; height:26px}
+
+/* ---------------- split / reduce dialogs ---------------- */
+.modal.small{width:min(400px,100%)}
+.dlglabel{display:block; color:var(--muted); font-size:11px; margin-bottom:4px}
+.pane .note{margin-top:8px}
+.opt{display:flex; gap:8px; align-items:flex-start; padding:8px; border:1px solid #c3c9d0; border-radius:4px; margin-bottom:8px; cursor:pointer; background:#fff}
+.opt:hover{border-color:var(--ink-blue)}
+.opt input{margin-top:2px}
+.opt span{font-size:12px; line-height:1.35}
+.opt b{font-weight:600}
+.strongopts{padding:2px 2px 4px}
+.strongopts input[type=range]{width:100%}
 
 /* ---------------- saved signatures ---------------- */
 .siglib{display:grid; grid-template-columns:repeat(2,1fr); gap:8px; max-height:230px; overflow:auto}
