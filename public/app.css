@@ -104,6 +104,13 @@ kbd{
   font-family:var(--ui); font-size:10px; font-weight:600; color:#22262c;
   background:#fff; border:1px solid #b8bec6; border-bottom-width:2px; border-radius:3px;
 }
+#perfpanel{
+  position:fixed; left:10px; bottom:10px; z-index:9999; max-width:340px;
+  background:rgba(20,24,28,.9); color:#eaf0f6; padding:8px 10px; border-radius:5px;
+  font:11px/1.5 ui-monospace,Menlo,Consolas,monospace; pointer-events:none;
+  box-shadow:0 4px 14px rgba(0,0,0,.35);
+}
+#perfpanel b{display:block; color:#8fc7ff; margin-bottom:3px; font-weight:700}
 .kbdhint{color:var(--muted)}
 .kbdhint kbd{height:15px; min-width:14px}
 @media (max-width:640px){ .kbdbody{grid-template-columns:1fr} }

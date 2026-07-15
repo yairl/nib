@@ -27,8 +27,27 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = '/vendor/pdf.worker.min.js';
 
 var DPR = Math.min(window.devicePixelRatio || 1, 2);
 
-var PERF = /[?&]perf/.test(location.search);
-function plog(){ if (PERF) console.info.apply(console, ['[perf]'].concat([].slice.call(arguments))); }
+var PERF = /perf/.test(location.search) || /perf/.test(location.hash);
+function perfPanel(){
+  var d = document.getElementById('perfpanel');
+  if (!d){
+    d = document.createElement('div');
+    d.id = 'perfpanel';
+    d.innerHTML = '<b>Perf timing — load a PDF</b>';
+    (document.body || document.documentElement).appendChild(d);
+  }
+  return d;
+}
+function perfReset(){ var d = document.getElementById('perfpanel'); if (d) d.innerHTML = '<b>Perf timing</b>'; }
+function plog(){
+  if (!PERF) return;
+  var args = [].slice.call(arguments);
+  try { console.info.apply(console, ['[perf]'].concat(args)); } catch(e){}
+  var line = document.createElement('div');
+  line.textContent = args.join(' ');
+  perfPanel().appendChild(line);
+}
+if (PERF){ if (document.readyState !== 'loading') perfPanel(); else document.addEventListener('DOMContentLoaded', perfPanel); }
 
 var S = {
   bytes:null, name:'document.pdf', doc:null, pages:[],
@@ -82,6 +101,7 @@ function openFile(file){
 function load(data){
   document.title = 'Opening\u2026';
   var tOpen = performance.now();
+  perfReset();
   renderPage._logged = false;
   renderText._logged = false;
   window.__perfOpen = tOpen;
