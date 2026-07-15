@@ -24,11 +24,15 @@ if (typeof window.pdfjsLib === 'undefined' || typeof window.PDFLib === 'undefine
 
 var PDFLIB = window.PDFLib;
 pdfjsLib.GlobalWorkerOptions.workerSrc = '/vendor/pdf.worker.min.js';
-try { pdfjsLib.setVerbosityLevel(pdfjsLib.VerbosityLevel.INFOS); } catch(e){} // TEMP: surface parse warnings (xref recovery etc.)
+// One shared worker for the whole session: prewarms the 1MB worker script during
+// page idle and is reused by every getDocument, so opens don't each spin up (and
+// re-fetch) a fresh worker.
+var PDFWORKER = null;
+try { PDFWORKER = new pdfjsLib.PDFWorker({ name: 'inkwell-pdf-worker' }); } catch (e) { PDFWORKER = null; }
 
 var DPR = Math.min(window.devicePixelRatio || 1, 2);
 
-var PERF = true; // TEMP: forced on to capture load timings regardless of URL
+var PERF = /perf/.test(location.search) || /perf/.test(location.hash);
 function perfPanel(){
   var d = document.getElementById('perfpanel');
   if (!d){
@@ -107,7 +111,7 @@ function load(data){
   renderText._logged = false;
   window.__perfOpen = tOpen;
   var tDoc = performance.now();
-  pdfjsLib.getDocument({ data:data }).promise.then(function(doc){
+  pdfjsLib.getDocument({ data:data, worker:PDFWORKER || undefined }).promise.then(function(doc){
     plog('getDocument (parse structure)', (performance.now() - tDoc).toFixed(0) + 'ms', doc.numPages + ' pages');
     S.doc = doc;
     var tPages = performance.now();
@@ -1585,7 +1589,7 @@ function rebuildDocument(baseBytes, opts){
   var PDFDocument = PDFLIB.PDFDocument;
   var pdfjsDoc, srcDoc, outDoc;
 
-  return pdfjsLib.getDocument({ data:baseBytes.slice(0) }).promise.then(function(d){
+  return pdfjsLib.getDocument({ data:baseBytes.slice(0), worker:PDFWORKER || undefined }).promise.then(function(d){
     pdfjsDoc = d;
     return PDFDocument.load(baseBytes, { ignoreEncryption:true });
   }).then(function(s){
