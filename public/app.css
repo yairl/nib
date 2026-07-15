@@ -71,14 +71,42 @@ input,select{font:inherit; color:inherit}
 .acctbtn #acctlabel{max-width:156px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .acctbtn.in svg{stroke:var(--ink-blue)}
 .acctmenu{
-  position:absolute; right:0; top:28px; min-width:160px; max-width:240px; padding:4px;
+  position:fixed; min-width:160px; max-width:240px; padding:4px;
   background:#fff; border:1px solid #9aa3ad; border-radius:3px;
-  box-shadow:0 4px 14px rgba(0,0,0,.25); z-index:40;
+  box-shadow:0 4px 14px rgba(0,0,0,.25); z-index:70;
 }
 .acctnote{padding:6px 8px; color:var(--muted); white-space:normal; line-height:1.35}
 .acctemail{padding:5px 8px; color:var(--muted); border-bottom:1px solid #e2e2e2; margin-bottom:2px; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .acctitem{display:block; width:100%; text-align:left; padding:6px 8px; border-radius:3px; color:#22262c}
 .acctitem:hover{background:var(--hover)}
+
+/* ---------------- alt-hold shortcut badges ---------------- */
+.kbadge{
+  position:absolute; bottom:0; right:0; min-width:11px; height:11px; padding:0 2px;
+  display:none; align-items:center; justify-content:center;
+  font-size:8px; font-weight:700; line-height:1; color:#fff; background:var(--ink-blue);
+  border:1px solid #fff; border-radius:2px; pointer-events:none;
+}
+.tb{position:relative}
+body.altdown .kbadge{display:inline-flex}
+
+/* ---------------- keyboard shortcuts sheet ---------------- */
+.kbdmodal{width:min(720px,100%)}
+.kbdbody{display:grid; grid-template-columns:repeat(3,1fr); gap:0 22px; padding:12px}
+.kbdgroup h3{font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); margin:10px 0 5px}
+.kbdgroup h3:first-child{margin-top:0}
+.kbdrow{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:3px 0; min-height:20px}
+.kbdrow>span:first-child{color:#22262c}
+.kbdkeys{display:inline-flex; align-items:center; gap:3px; flex:0 0 auto}
+.kbor{color:var(--muted); font-size:10px; margin:0 1px}
+kbd{
+  display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:17px; padding:0 4px;
+  font-family:var(--ui); font-size:10px; font-weight:600; color:#22262c;
+  background:#fff; border:1px solid #b8bec6; border-bottom-width:2px; border-radius:3px;
+}
+.kbdhint{color:var(--muted)}
+.kbdhint kbd{height:15px; min-width:14px}
+@media (max-width:640px){ .kbdbody{grid-template-columns:1fr} }
 
 .find{display:flex; align-items:center; gap:1px; flex:0 0 auto}
 .findlabel{color:#4a5058; margin-right:3px}

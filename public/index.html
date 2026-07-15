@@ -96,7 +96,7 @@
       <svg viewBox="0 0 16 16"><circle cx="8" cy="5" r="2.6"/><path d="M3 13.5c0-2.6 2.2-4 5-4s5 1.4 5 4"/><path d="M11.5 2.5l1.6 1.6"/></svg>
     </button>
     <button class="tb tool" data-tool="redact" title="Redact — drag a box to permanently black out content (R)" aria-label="Redact">
-      <svg viewBox="0 0 16 16"><rect x="2.5" y="6" width="11" height="4" rx="0.5" fill="currentColor" stroke="none"/></svg>
+      <svg viewBox="0 0 16 16"><path d="M2.5 3.5h11M2.5 12.5h6"/><rect x="2" y="6.3" width="12" height="3.4" rx="0.5" fill="currentColor" stroke="none"/></svg>
     </button>
     <button class="swatch on" data-ink="#16325c" style="background:#16325c" title="Blue ink" aria-label="Blue ink"></button>
     <button class="swatch" data-ink="#14181c" style="background:#14181c" title="Black ink" aria-label="Black ink"></button>
@@ -142,6 +142,10 @@
   </button>
 
   <span class="sep"></span>
+
+  <button class="tb" id="helpbtn" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">
+    <svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M6.2 6.2a1.8 1.8 0 113.1 1.3c-.7.6-1.3.9-1.3 1.8"/><path d="M8 11.6v.01" stroke-width="1.6"/></svg>
+  </button>
 
   <div class="acct" id="acct">
     <button class="tb acctbtn" id="acctbtn" title="Account" aria-label="Account">
@@ -296,6 +300,53 @@
       <button class="open ghost" id="reducecancel">Cancel</button>
       <button class="open" id="reducego">Reduce</button>
     </footer>
+  </div>
+</div>
+
+<div class="scrim" id="helpscrim">
+  <div class="modal kbdmodal" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
+    <header><h2>Keyboard shortcuts</h2><span class="grow"></span><button class="open ghost" id="helpclose">Close</button></header>
+    <div class="kbdbody">
+      <section class="kbdgroup">
+        <h3>Tools</h3>
+        <div class="kbdrow"><span>Select text</span><span class="kbdkeys"><kbd>V</kbd></span></div>
+        <div class="kbdrow"><span>Hand / pan</span><span class="kbdkeys"><kbd>H</kbd></span></div>
+        <div class="kbdrow"><span>Text</span><span class="kbdkeys"><kbd>1</kbd></span></div>
+        <div class="kbdrow"><span>Check</span><span class="kbdkeys"><kbd>2</kbd></span></div>
+        <div class="kbdrow"><span>Cross</span><span class="kbdkeys"><kbd>3</kbd></span></div>
+        <div class="kbdrow"><span>Today's date</span><span class="kbdkeys"><kbd>4</kbd></span></div>
+        <div class="kbdrow"><span>Signature</span><span class="kbdkeys"><kbd>5</kbd></span></div>
+        <div class="kbdrow"><span>Auto-fill profile</span><span class="kbdkeys"><kbd>6</kbd></span></div>
+        <div class="kbdrow"><span>Redact</span><span class="kbdkeys"><kbd>R</kbd></span></div>
+        <div class="kbdrow"><span>Delete selected</span><span class="kbdkeys"><kbd>Del</kbd></span></div>
+      </section>
+      <section class="kbdgroup">
+        <h3>File</h3>
+        <div class="kbdrow"><span>Open</span><span class="kbdkeys"><kbd>Ctrl</kbd><kbd>O</kbd></span></div>
+        <div class="kbdrow"><span>Save filled copy</span><span class="kbdkeys"><kbd>Ctrl</kbd><kbd>S</kbd></span></div>
+        <div class="kbdrow"><span>Print</span><span class="kbdkeys"><kbd>Ctrl</kbd><kbd>P</kbd></span></div>
+        <div class="kbdrow"><span>Undo</span><span class="kbdkeys"><kbd>Ctrl</kbd><kbd>Z</kbd></span></div>
+        <h3>Find</h3>
+        <div class="kbdrow"><span>Find</span><span class="kbdkeys"><kbd>/</kbd><span class="kbor">or</span><kbd>Ctrl</kbd><kbd>F</kbd></span></div>
+        <div class="kbdrow"><span>Next match</span><span class="kbdkeys"><kbd>F3</kbd></span></div>
+        <div class="kbdrow"><span>Previous match</span><span class="kbdkeys"><kbd>Shift</kbd><kbd>F3</kbd></span></div>
+        <div class="kbdrow"><span>Go to page</span><span class="kbdkeys"><kbd>Ctrl</kbd><kbd>G</kbd></span></div>
+      </section>
+      <section class="kbdgroup">
+        <h3>View &amp; navigate</h3>
+        <div class="kbdrow"><span>Previous / next page</span><span class="kbdkeys"><kbd>P</kbd><kbd>N</kbd></span></div>
+        <div class="kbdrow"><span>Scroll up / down</span><span class="kbdkeys"><kbd>K</kbd><kbd>J</kbd></span></div>
+        <div class="kbdrow"><span>First / last page</span><span class="kbdkeys"><kbd>Home</kbd><kbd>End</kbd></span></div>
+        <div class="kbdrow"><span>Zoom in / out</span><span class="kbdkeys"><kbd>+</kbd><kbd>−</kbd></span></div>
+        <div class="kbdrow"><span>Fit width</span><span class="kbdkeys"><kbd>W</kbd></span></div>
+        <div class="kbdrow"><span>Fit page</span><span class="kbdkeys"><kbd>Z</kbd></span></div>
+        <div class="kbdrow"><span>Continuous / single</span><span class="kbdkeys"><kbd>C</kbd></span></div>
+        <div class="kbdrow"><span>Bookmarks</span><span class="kbdkeys"><kbd>F12</kbd></span></div>
+        <div class="kbdrow"><span>Full screen</span><span class="kbdkeys"><kbd>F11</kbd></span></div>
+        <div class="kbdrow"><span>Deselect / close</span><span class="kbdkeys"><kbd>Esc</kbd></span></div>
+      </section>
+    </div>
+    <footer><span class="kbdhint">Tip: hold <kbd>Alt</kbd> to see shortcuts on the toolbar.</span></footer>
   </div>
 </div>
 

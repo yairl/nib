@@ -1951,7 +1951,14 @@ each('.pf', function(el){ el.addEventListener('keydown', function(e){ e.stopProp
 
 $('acctbtn').addEventListener('click', function(e){
   e.stopPropagation();
-  $('acctmenu').hidden = !$('acctmenu').hidden;
+  var m = $('acctmenu');
+  var willOpen = m.hidden;
+  m.hidden = !willOpen;
+  if (willOpen){
+    var r = this.getBoundingClientRect();
+    m.style.top = (r.bottom + 2) + 'px';
+    m.style.right = Math.max(4, window.innerWidth - r.right) + 'px';
+  }
 });
 $('acctsignin').addEventListener('click', loginRedirect);
 $('signout').addEventListener('click', function(){ location.href = '/xhost-auth/logout?return_to=/'; });
@@ -1959,6 +1966,33 @@ document.addEventListener('click', function(e){
   var acct = $('acct');
   if (acct && !acct.contains(e.target)) $('acctmenu').hidden = true;
 });
+
+/* ---- alt-hold shortcut badges ---- */
+var BADGES = {
+  '[data-tool="pick"]':'V', '[data-tool="hand"]':'H',
+  '[data-tool="text"]':'1', '[data-tool="check"]':'2', '[data-tool="cross"]':'3',
+  '[data-tool="date"]':'4', '[data-tool="sig"]':'5', '[data-tool="profile"]':'6',
+  '[data-tool="redact"]':'R',
+  '#prev':'P', '#next':'N', '#zin':'+', '#zout':'−', '#vcont':'C', '#vsingle':'C'
+};
+Object.keys(BADGES).forEach(function(sel){
+  var el = document.querySelector(sel);
+  if (!el) return;
+  var b = document.createElement('span');
+  b.className = 'kbadge';
+  b.textContent = BADGES[sel];
+  el.appendChild(b);
+});
+window.addEventListener('keydown', function(e){ if (e.key === 'Alt'){ e.preventDefault(); document.body.classList.add('altdown'); } }, true);
+window.addEventListener('keyup', function(e){ if (e.key === 'Alt') document.body.classList.remove('altdown'); }, true);
+window.addEventListener('blur', function(){ document.body.classList.remove('altdown'); });
+
+/* ---- keyboard shortcuts sheet ---- */
+function openHelp(){ $('acctmenu').hidden = true; $('helpscrim').classList.add('open'); }
+function closeHelp(){ $('helpscrim').classList.remove('open'); }
+$('helpbtn').addEventListener('click', openHelp);
+$('helpclose').addEventListener('click', closeHelp);
+$('helpscrim').addEventListener('click', function(e){ if (e.target === this) closeHelp(); });
 $('padclear').addEventListener('click', function(){ setupPad(); updateSigReady(); });
 $('typed').addEventListener('input', makeTyped);
 $('typed').addEventListener('keydown', function(e){ e.stopPropagation(); });
@@ -1998,6 +2032,9 @@ window.addEventListener('keydown', function(e){
 
   var k = e.key;
   var ctrl = e.ctrlKey || e.metaKey;
+  if (e.altKey) return;
+
+  if (k === '?'){ e.preventDefault(); $('helpscrim').classList.contains('open') ? closeHelp() : openHelp(); return; }
 
   if (ctrl && k.toLowerCase() === 'o'){ e.preventDefault(); $('file').click(); return; }
   if (ctrl && k.toLowerCase() === 's'){ e.preventDefault(); if (!$('dl').disabled) save(); return; }
@@ -2008,7 +2045,8 @@ window.addEventListener('keydown', function(e){
   if (ctrl) return;
 
   if (k === 'Escape'){
-    if ($('profilepop')) closePopover();
+    if ($('helpscrim').classList.contains('open')) closeHelp();
+    else if ($('profilepop')) closePopover();
     else if ($('splitscrim').classList.contains('open')) closeSplit();
     else if ($('reducescrim').classList.contains('open')) closeReduce();
     else if ($('scrim').classList.contains('open')) closeSig();
