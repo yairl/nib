@@ -27,7 +27,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = '/vendor/pdf.worker.min.js';
 
 var DPR = Math.min(window.devicePixelRatio || 1, 2);
 
-var PERF = /perf/.test(location.search) || /perf/.test(location.hash);
+var PERF = true; // TEMP: forced on to capture load timings regardless of URL
 function perfPanel(){
   var d = document.getElementById('perfpanel');
   if (!d){
