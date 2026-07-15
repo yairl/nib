@@ -24,6 +24,7 @@ if (typeof window.pdfjsLib === 'undefined' || typeof window.PDFLib === 'undefine
 
 var PDFLIB = window.PDFLib;
 pdfjsLib.GlobalWorkerOptions.workerSrc = '/vendor/pdf.worker.min.js';
+try { pdfjsLib.setVerbosityLevel(pdfjsLib.VerbosityLevel.INFOS); } catch(e){} // TEMP: surface parse warnings (xref recovery etc.)
 
 var DPR = Math.min(window.devicePixelRatio || 1, 2);
 
