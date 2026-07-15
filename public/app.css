@@ -79,6 +79,7 @@ input,select{font:inherit; color:inherit}
 .acctemail{padding:5px 8px; color:var(--muted); border-bottom:1px solid #e2e2e2; margin-bottom:2px; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .acctitem{display:block; width:100%; text-align:left; padding:6px 8px; border-radius:3px; color:#22262c}
 .acctitem:hover{background:var(--hover)}
+.acctsep{height:1px; background:#e2e2e2; margin:3px 0}
 
 /* ---------------- alt-hold shortcut badges ---------------- */
 .kbadge{
@@ -114,6 +115,25 @@ kbd{
 .kbdhint{color:var(--muted)}
 .kbdhint kbd{height:15px; min-width:14px}
 @media (max-width:640px){ .kbdbody{grid-template-columns:1fr} }
+
+/* ---------------- stats for nerds ---------------- */
+.statsmodal{width:min(560px,100%)}
+.statsbody{padding:12px}
+.statsloading{padding:20px; text-align:center}
+.statsgroup{margin-bottom:14px}
+.statsgroup:last-child{margin-bottom:0}
+.statsgroup h3{font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); margin:0 0 6px}
+.statcards{display:grid; grid-template-columns:repeat(3,1fr); gap:8px}
+.statcard{background:#fff; border:1px solid #d7dce2; border-radius:4px; padding:8px 10px}
+.statcard .n{font-size:20px; font-weight:700; color:var(--ink-blue); line-height:1.1; font-variant-numeric:tabular-nums}
+.statcard .l{color:var(--muted); font-size:11px; margin-top:2px}
+.stattable{width:100%; border-collapse:collapse; background:#fff; border:1px solid #d7dce2; border-radius:4px; overflow:hidden}
+.stattable th,.stattable td{padding:5px 10px; text-align:right; font-variant-numeric:tabular-nums}
+.stattable th:first-child,.stattable td:first-child{text-align:left; color:#22262c}
+.stattable thead th{color:var(--muted); font-weight:600; font-size:11px; border-bottom:1px solid #e2e2e2; background:var(--chrome)}
+.stattable tbody tr+tr td{border-top:1px solid #eef0f2}
+.stattable tfoot td{border-top:1px solid #d7dce2; font-weight:700; color:var(--ink)}
+@media (max-width:520px){ .statcards{grid-template-columns:1fr 1fr} }
 
 .find{display:flex; align-items:center; gap:1px; flex:0 0 auto}
 .findlabel{color:#4a5058; margin-right:3px}

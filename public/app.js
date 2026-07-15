@@ -59,11 +59,43 @@ var S = {
   zoom:1, zmode:'fitw', cont:true, cur:1,
   tool:'text', ink:'#16325c',
   anns:[], els:{}, sel:null, sig:null, hist:[], seq:0,
-  fields:[],
+  fields:[], formTouched:false,
   find:{ q:'', hits:[], i:-1, indexed:false },
   printUrl:null,
   user:null, saved:[], profile:null
 };
+
+/* ================= usage stats ================= */
+function visitorId(){
+  try {
+    var k = 'inkwell_vid', v = localStorage.getItem(k);
+    if (!v || !/^[A-Za-z0-9-]{8,64}$/.test(v)){
+      v = (window.crypto && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : ('v' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12));
+      localStorage.setItem(k, v);
+    }
+    return v;
+  } catch(e){ return ''; }
+}
+function recordHit(){
+  try {
+    fetch('/api/hit', {
+      method:'POST', credentials:'same-origin', keepalive:true,
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ vid: visitorId() })
+    }).catch(function(){});
+  } catch(e){}
+}
+function recordEvent(kind){
+  try {
+    fetch('/api/event', {
+      method:'POST', credentials:'same-origin', keepalive:true,
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ kind: kind })
+    }).catch(function(){});
+  } catch(e){}
+}
 
 var CHECK_PATH = 'M 12 54 L 40 82 L 88 16';
 var CROSS_PATH = 'M 16 16 L 84 84 M 84 16 L 16 84';
@@ -93,7 +125,7 @@ function openFile(file){
     var buf = fr.result;
     S.bytes = new Uint8Array(buf);
     S.name = file.name || 'document.pdf';
-    S.anns = []; S.els = {}; S.sel = null; S.hist = []; S.fields = [];
+    S.anns = []; S.els = {}; S.sel = null; S.hist = []; S.fields = []; S.formTouched = false;
     S.find = { q:'', hits:[], i:-1, indexed:false };
     $('findbox').value = '';
     $('findcount').textContent = '';
@@ -768,11 +800,12 @@ function buildField(f){
       el.value = f.radioValue;
       el.checked = (f.value !== '' && f.value !== 'Off' && f.value === f.radioValue);
       el.addEventListener('change', function(){
+        S.formTouched = true;
         S.fields.forEach(function(g){ if (g.type === 'radio' && g.name === f.name) g.value = el.value; });
       });
     } else {
       el.checked = !!f.value;
-      el.addEventListener('change', function(){ f.value = el.checked; });
+      el.addEventListener('change', function(){ S.formTouched = true; f.value = el.checked; });
     }
   } else if (f.type === 'combo' || f.type === 'list'){
     el = document.createElement('select');
@@ -786,18 +819,18 @@ function buildField(f){
       el.appendChild(op);
     });
     el.value = f.value || '';
-    el.addEventListener('change', function(){ f.value = el.value; });
+    el.addEventListener('change', function(){ S.formTouched = true; f.value = el.value; });
   } else if (f.multiline){
     el = document.createElement('textarea');
     el.className = 'ff ff-area';
     el.value = f.value || '';
-    el.addEventListener('input', function(){ f.value = el.value; });
+    el.addEventListener('input', function(){ S.formTouched = true; f.value = el.value; });
   } else {
     el = document.createElement('input');
     el.type = 'text';
     el.className = 'ff ff-text';
     el.value = f.value || '';
-    el.addEventListener('input', function(){ f.value = el.value; });
+    el.addEventListener('input', function(){ S.formTouched = true; f.value = el.value; });
   }
   if (f.readOnly) el.disabled = true;
   el.tabIndex = f.tab || 0;
@@ -1671,6 +1704,10 @@ function save(){
   busy($('dl'), 'Saving\u2026', function(){
     return buildOutput().then(function(out){
       downloadBytes(out, S.name.replace(/\.pdf$/i, '') + ' (signed).pdf');
+      var hasRedact = S.anns.some(function(a){ return a.type === 'redact'; });
+      var hasFill = S.formTouched || S.anns.some(function(a){ return a.type !== 'redact'; });
+      if (hasRedact) recordEvent('redact');
+      if (hasFill) recordEvent('fill');
       toast('Saved.');
     });
   });
@@ -1751,6 +1788,7 @@ function mergeAppend(files){
       return baseDoc.save({ useObjectStreams:true });
     }).then(function(merged){
       reopenBytes(new Uint8Array(merged));
+      recordEvent('merge');
       toast('Merged — added ' + added + ' page' + (added === 1 ? '' : 's') + '.');
     });
   });
@@ -1792,6 +1830,7 @@ function splitExtract(indices){
       var label = indices.length === 1 ? ('page ' + (indices[0] + 1)) : (indices.length + ' pages');
       downloadBytes(new Uint8Array(bytes), S.name.replace(/\.pdf$/i, '') + ' (' + label + ').pdf');
       closeSplit();
+      recordEvent('split');
       toast('Extracted ' + indices.length + ' page' + (indices.length === 1 ? '' : 's') + '.');
     });
   });
@@ -2041,6 +2080,55 @@ function closeHelp(){ $('helpscrim').classList.remove('open'); }
 $('helpbtn').addEventListener('click', openHelp);
 $('helpclose').addEventListener('click', closeHelp);
 $('helpscrim').addEventListener('click', function(e){ if (e.target === this) closeHelp(); });
+
+/* ---- stats for nerds ---- */
+function fmtNum(n){ return (typeof n === 'number' ? n : 0).toLocaleString('en-US'); }
+function editRows(b){
+  b = b || {};
+  return '<tr><td>Fill &amp; sign</td><td>' + fmtNum(b.fill) + '</td></tr>' +
+         '<tr><td>Merge</td><td>' + fmtNum(b.merge) + '</td></tr>' +
+         '<tr><td>Split</td><td>' + fmtNum(b.split) + '</td></tr>' +
+         '<tr><td>Redact</td><td>' + fmtNum(b.redact) + '</td></tr>';
+}
+function renderStats(d){
+  var ph = (d && d.pageHits) || {};
+  var ed = (d && d.edits) || {};
+  var overall = ed.overall || {}, day = ed.day || {}, week = ed.week || {};
+  var html = '';
+  html += '<div class="statsgroup"><h3>Page visits</h3><div class="statcards">' +
+    '<div class="statcard"><div class="n">' + fmtNum(ph.total) + '</div><div class="l">Total visits</div></div>' +
+    '<div class="statcard"><div class="n">' + fmtNum(ph.uniqueAnon) + '</div><div class="l">Unique anonymous</div></div>' +
+    '<div class="statcard"><div class="n">' + fmtNum(ph.uniqueSignedIn) + '</div><div class="l">Unique signed-in</div></div>' +
+    '</div></div>';
+  html += '<div class="statsgroup"><h3>PDFs edited</h3><div class="statcards">' +
+    '<div class="statcard"><div class="n">' + fmtNum(overall.total) + '</div><div class="l">All time</div></div>' +
+    '<div class="statcard"><div class="n">' + fmtNum(day.total) + '</div><div class="l">Last 24 hours</div></div>' +
+    '<div class="statcard"><div class="n">' + fmtNum(week.total) + '</div><div class="l">Last 7 days</div></div>' +
+    '</div></div>';
+  html += '<div class="statsgroup"><h3>By tool</h3><table class="stattable">' +
+    '<thead><tr><th>Tool</th><th>All time</th><th>24h</th><th>7d</th></tr></thead><tbody>' +
+    ['fill','merge','split','redact'].map(function(k){
+      var label = { fill:'Fill &amp; sign', merge:'Merge', split:'Split', redact:'Redact' }[k];
+      return '<tr><td>' + label + '</td><td>' + fmtNum(overall[k]) + '</td><td>' +
+        fmtNum(day[k]) + '</td><td>' + fmtNum(week[k]) + '</td></tr>';
+    }).join('') +
+    '</tbody><tfoot><tr><td>Total</td><td>' + fmtNum(overall.total) + '</td><td>' +
+    fmtNum(day.total) + '</td><td>' + fmtNum(week.total) + '</td></tr></tfoot></table></div>';
+  $('statsbody').innerHTML = html;
+}
+function openStats(){
+  $('acctmenu').hidden = true;
+  $('statsbody').innerHTML = '<div class="statsloading note">Loading…</div>';
+  $('statsscrim').classList.add('open');
+  fetch('/api/stats', { credentials:'same-origin' })
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(d){ if (d) renderStats(d); else $('statsbody').innerHTML = '<div class="statsloading note">Stats are unavailable right now.</div>'; })
+    .catch(function(){ $('statsbody').innerHTML = '<div class="statsloading note">Stats are unavailable right now.</div>'; });
+}
+function closeStats(){ $('statsscrim').classList.remove('open'); }
+$('statsbtn').addEventListener('click', openStats);
+$('statsclose').addEventListener('click', closeStats);
+$('statsscrim').addEventListener('click', function(e){ if (e.target === this) closeStats(); });
 $('padclear').addEventListener('click', function(){ setupPad(); updateSigReady(); });
 $('typed').addEventListener('input', makeTyped);
 $('typed').addEventListener('keydown', function(e){ e.stopPropagation(); });
@@ -2093,7 +2181,8 @@ window.addEventListener('keydown', function(e){
   if (ctrl) return;
 
   if (k === 'Escape'){
-    if ($('helpscrim').classList.contains('open')) closeHelp();
+    if ($('statsscrim').classList.contains('open')) closeStats();
+    else if ($('helpscrim').classList.contains('open')) closeHelp();
     else if ($('profilepop')) closePopover();
     else if ($('splitscrim').classList.contains('open')) closeSplit();
     else if ($('reducescrim').classList.contains('open')) closeReduce();
@@ -2168,5 +2257,6 @@ document.addEventListener('fullscreenchange', function(){
 
 setTool('text');
 loadAccount();
+recordHit();
 
 })();
