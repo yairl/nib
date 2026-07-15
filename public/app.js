@@ -27,6 +27,9 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = '/vendor/pdf.worker.min.js';
 
 var DPR = Math.min(window.devicePixelRatio || 1, 2);
 
+var PERF = /[?&]perf/.test(location.search);
+function plog(){ if (PERF) console.info.apply(console, ['[perf]'].concat([].slice.call(arguments))); }
+
 var S = {
   bytes:null, name:'document.pdf', doc:null, pages:[],
   zoom:1, zmode:'fitw', cont:true, cur:1,
@@ -59,8 +62,10 @@ function openFile(file){
   if (!file) return;
   var isPdf = (file.type && file.type.indexOf('pdf') !== -1) || /\.pdf$/i.test(file.name || '');
   if (!isPdf){ toast('Not a PDF.'); return; }
+  var tRead = performance.now();
   var fr = new FileReader();
   fr.onload = function(){
+    plog('file read', (performance.now() - tRead).toFixed(0) + 'ms', (file.size / 1024).toFixed(0) + 'KB');
     var buf = fr.result;
     S.bytes = new Uint8Array(buf);
     S.name = file.name || 'document.pdf';
@@ -76,11 +81,21 @@ function openFile(file){
 
 function load(data){
   document.title = 'Opening\u2026';
+  var tOpen = performance.now();
+  renderPage._logged = false;
+  renderText._logged = false;
+  window.__perfOpen = tOpen;
+  var tDoc = performance.now();
   pdfjsLib.getDocument({ data:data }).promise.then(function(doc){
+    plog('getDocument (parse structure)', (performance.now() - tDoc).toFixed(0) + 'ms', doc.numPages + ' pages');
     S.doc = doc;
+    var tPages = performance.now();
     var jobs = [];
     for (var i = 1; i <= doc.numPages; i++) jobs.push(doc.getPage(i));
-    return Promise.all(jobs);
+    return Promise.all(jobs).then(function(pages){
+      plog('getPage x' + pages.length + ' (metadata)', (performance.now() - tPages).toFixed(0) + 'ms');
+      return pages;
+    });
   }).then(function(pages){
     S.pages = pages.map(function(p){
       var vp = p.getViewport({ scale:1 });
@@ -164,8 +179,14 @@ function renderPage(i){
   var ctx = p.canvas.getContext('2d', { alpha:false });
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, p.canvas.width, p.canvas.height);
+  var tRender = performance.now();
   p.pdf.render({ canvasContext:ctx, viewport:vp }).promise.then(function(){
     p.scale = target; p.busy = false;
+    if (!renderPage._logged){
+      renderPage._logged = true;
+      plog('first page canvas render', (performance.now() - tRender).toFixed(0) + 'ms');
+      if (window.__perfOpen) plog('=> total open to first page painted', (performance.now() - window.__perfOpen).toFixed(0) + 'ms');
+    }
   }).catch(function(){ p.busy = false; });
 }
 
@@ -181,8 +202,10 @@ function renderText(i){
   p.el.style.setProperty('--scale-factor', String(S.zoom));
   p.text.style.setProperty('--scale-factor', String(S.zoom));
 
+  var tText = performance.now();
   var src = p.tc ? Promise.resolve(p.tc) : p.pdf.getTextContent().then(function(tc){ p.tc = tc; return tc; });
   src.then(function(tc){
+    if (!renderText._logged){ renderText._logged = true; plog('first page getTextContent', (performance.now() - tText).toFixed(0) + 'ms', (tc.items ? tc.items.length : 0) + ' items'); }
     if (Math.abs(p.tscale - S.zoom) > 0.001) return;
     p.text.innerHTML = '';
     p.text.style.setProperty('--scale-factor', String(S.zoom));
