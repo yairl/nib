@@ -1,4 +1,4 @@
-# Inkwell
+# Nib
 
 Fill and sign PDFs in the browser. Nothing is uploaded: the file is parsed with
 pdf.js, annotations are placed on an overlay, and the final PDF is written with

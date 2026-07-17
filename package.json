@@ -2,7 +2,7 @@
   "name": "inkwell-pdf",
   "private": true,
   "version": "1.0.0",
-  "description": "Inkwell - fill and sign PDFs in the browser",
+  "description": "Nib - fill and sign PDFs in the browser",
   "main": "server.js",
   "engines": { "node": ">=18" },
   "scripts": { "start": "node server.js" },

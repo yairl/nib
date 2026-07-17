@@ -164,7 +164,7 @@ function load(data){
     });
     buildDoc();
     loadFields();
-    document.title = S.name + ' - Inkwell';
+    document.title = S.name + ' - Nib';
     $('empty').hidden = true;
     $('dl').disabled = false;
     $('printbtn').disabled = false;
@@ -179,7 +179,7 @@ function load(data){
     toast('Click the page to type. V to select text, H to pan.');
   }).catch(function(err){
     console.error(err);
-    document.title = 'Inkwell';
+    document.title = 'Nib';
     toast('That PDF could not be opened.');
   });
 }
