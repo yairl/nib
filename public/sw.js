@@ -3,7 +3,7 @@
 /* Bump ASSET_VERSION whenever the precached app shell changes (keep the
    ?v= values below in sync with the ones in index.html). Changing it renames
    the caches, so the old ones are dropped on activate. */
-var ASSET_VERSION = 'v11';
+var ASSET_VERSION = 'v12';
 var CORE_CACHE = 'nib-core-' + ASSET_VERSION;
 var RUNTIME_CACHE = 'nib-runtime-' + ASSET_VERSION;
 
@@ -51,6 +51,21 @@ self.addEventListener('fetch', function (e) {
   if (url.pathname === '/healthz') return;
   if (url.pathname.indexOf('/api/') === 0) return;            // never cache data
   if (url.pathname.indexOf('/xhost-auth/') === 0) return;     // never cache auth
+
+  // The manifest drives PWA install + OS file-handler registration, so it must
+  // never be served stale. Network-first, cache only as an offline fallback.
+  if (url.pathname === '/manifest.webmanifest') {
+    e.respondWith(
+      fetch(req).then(function (res) {
+        if (res && res.status === 200) {
+          var copy = res.clone();
+          caches.open(RUNTIME_CACHE).then(function (c) { c.put(req, copy); });
+        }
+        return res;
+      }).catch(function () { return caches.match(req); })
+    );
+    return;
+  }
 
   // Navigations: network-first so deploys show immediately; fall back to the
   // cached shell when offline.
