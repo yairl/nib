@@ -2129,6 +2129,33 @@ function closeStats(){ $('statsscrim').classList.remove('open'); }
 $('statsbtn').addEventListener('click', openStats);
 $('statsclose').addEventListener('click', closeStats);
 $('statsscrim').addEventListener('click', function(e){ if (e.target === this) closeStats(); });
+
+// PWA install prompt. Chromium fires beforeinstallprompt; we stash it and
+// reveal the Install button so users know installing is possible. iOS Safari
+// has no such event, so we detect it and show manual instructions instead.
+(function(){
+  var installEvt = null;
+  var isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  var ua = navigator.userAgent || '';
+  var isiOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+  var isiOSSafari = isiOS && /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua);
+  var btn = $('installbtn');
+  function show(){ if (!isStandalone) btn.hidden = false; }
+  window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); installEvt = e; show(); });
+  window.addEventListener('appinstalled', function(){ installEvt = null; btn.hidden = true; });
+  if (isiOSSafari) show();
+  btn.addEventListener('click', function(){
+    $('acctmenu').hidden = true;
+    if (installEvt) {
+      installEvt.prompt();
+      installEvt.userChoice.then(function(){ installEvt = null; btn.hidden = true; });
+    } else if (isiOS) {
+      alert('To install Nib: tap the Share button, then "Add to Home Screen".');
+    } else {
+      alert('To install Nib, use your browser menu and choose "Install" or "Add to Home Screen".');
+    }
+  });
+})();
 $('padclear').addEventListener('click', function(){ setupPad(); updateSigReady(); });
 $('typed').addEventListener('input', makeTyped);
 $('typed').addEventListener('keydown', function(e){ e.stopPropagation(); });
