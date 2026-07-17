@@ -3,15 +3,15 @@
 /* Bump ASSET_VERSION whenever the precached app shell changes (keep the
    ?v= values below in sync with the ones in index.html). Changing it renames
    the caches, so the old ones are dropped on activate. */
-var ASSET_VERSION = 'v9';
+var ASSET_VERSION = 'v10';
 var CORE_CACHE = 'nib-core-' + ASSET_VERSION;
 var RUNTIME_CACHE = 'nib-runtime-' + ASSET_VERSION;
 
 var PRECACHE = [
   '/',
   '/index.html',
-  '/app.css?v=9',
-  '/app.js?v=9',
+  '/app.css?v=10',
+  '/app.js?v=10',
   '/manifest.webmanifest',
   '/vendor/pdf.min.js',
   '/vendor/pdf-lib.min.js',

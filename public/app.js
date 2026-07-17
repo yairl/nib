@@ -2286,4 +2286,13 @@ setTool('text');
 loadAccount();
 recordHit();
 
+// PWA file handling: when Nib is launched as the OS handler for a .pdf, the
+// File Handling API hands us the file(s) here. Route them through openFile.
+if ('launchQueue' in window && 'setConsumer' in window.launchQueue) {
+  window.launchQueue.setConsumer(function(params){
+    if (!params || !params.files || !params.files.length) return;
+    params.files[0].getFile().then(openFile).catch(function(){ toast('Could not open that file.'); });
+  });
+}
+
 })();
