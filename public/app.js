@@ -114,22 +114,77 @@ function hexToRgb(hex){
 }
 
 /* ================= open ================= */
+function startDoc(bytes, name){
+  S.bytes = bytes;
+  S.name = name || 'document.pdf';
+  S.anns = []; S.els = {}; S.sel = null; S.hist = []; S.fields = []; S.formTouched = false;
+  S.find = { q:'', hits:[], i:-1, indexed:false };
+  $('findbox').value = '';
+  $('findcount').textContent = '';
+  load(new Uint8Array(bytes.slice(0)));
+}
+
+// Decode any browser-supported image to PNG bytes via a canvas. Used for
+// formats pdf-lib can't embed natively (webp, gif, bmp, ...).
+function rasterizePng(file){
+  return new Promise(function(resolve, reject){
+    var url = URL.createObjectURL(file);
+    var img = new Image();
+    img.onload = function(){
+      var c = document.createElement('canvas');
+      c.width = img.naturalWidth; c.height = img.naturalHeight;
+      c.getContext('2d').drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      c.toBlob(function(blob){
+        if (!blob){ reject(new Error('encode')); return; }
+        blob.arrayBuffer().then(function(b){ resolve(new Uint8Array(b)); }, reject);
+      }, 'image/png');
+    };
+    img.onerror = function(){ URL.revokeObjectURL(url); reject(new Error('decode')); };
+    img.src = url;
+  });
+}
+
+// Wrap an image into a single-page PDF so the rest of the app (fill, sign,
+// save, print) works on it unchanged. The page matches the image's pixel size.
+function imageToPdf(file){
+  var name = file.name || '';
+  var type = (file.type || '').toLowerCase();
+  var isPng = type.indexOf('png') !== -1 || /\.png$/i.test(name);
+  var isJpg = type.indexOf('jpeg') !== -1 || type.indexOf('jpg') !== -1 || /\.jpe?g$/i.test(name);
+  var PDFDocument = PDFLIB.PDFDocument;
+  return PDFDocument.create().then(function(pdf){
+    var embed;
+    if (isPng) embed = file.arrayBuffer().then(function(b){ return pdf.embedPng(new Uint8Array(b)); });
+    else if (isJpg) embed = file.arrayBuffer().then(function(b){ return pdf.embedJpg(new Uint8Array(b)); });
+    else embed = rasterizePng(file).then(function(png){ return pdf.embedPng(png); });
+    return embed.then(function(img){
+      var page = pdf.addPage([img.width, img.height]);
+      page.drawImage(img, { x:0, y:0, width:img.width, height:img.height });
+      return pdf.save();
+    });
+  });
+}
+
 function openFile(file){
   if (!file) return;
-  var isPdf = (file.type && file.type.indexOf('pdf') !== -1) || /\.pdf$/i.test(file.name || '');
-  if (!isPdf){ toast('Not a PDF.'); return; }
+  var name = file.name || '';
+  var isPdf = (file.type && file.type.indexOf('pdf') !== -1) || /\.pdf$/i.test(name);
+  var isImg = (file.type && file.type.indexOf('image/') === 0) || /\.(png|jpe?g|gif|bmp|webp)$/i.test(name);
+  if (!isPdf && !isImg){ toast('Open a PDF or image file.'); return; }
+
+  if (isImg && !isPdf){
+    imageToPdf(file).then(function(bytes){
+      startDoc(bytes, (name.replace(/\.[^.]+$/, '') || 'image') + '.pdf');
+    }).catch(function(){ toast('Could not open that image.'); });
+    return;
+  }
+
   var tRead = performance.now();
   var fr = new FileReader();
   fr.onload = function(){
     plog('file read', (performance.now() - tRead).toFixed(0) + 'ms', (file.size / 1024).toFixed(0) + 'KB');
-    var buf = fr.result;
-    S.bytes = new Uint8Array(buf);
-    S.name = file.name || 'document.pdf';
-    S.anns = []; S.els = {}; S.sel = null; S.hist = []; S.fields = []; S.formTouched = false;
-    S.find = { q:'', hits:[], i:-1, indexed:false };
-    $('findbox').value = '';
-    $('findcount').textContent = '';
-    load(new Uint8Array(buf.slice(0)));
+    startDoc(new Uint8Array(fr.result), name || 'document.pdf');
   };
   fr.onerror = function(){ toast('Could not read that file.'); };
   fr.readAsArrayBuffer(file);

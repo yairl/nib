@@ -17,7 +17,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Dancing+Script:wght@600&family=Homemade+Apple&family=Sacramento&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/app.css?v=11">
+<link rel="stylesheet" href="/app.css?v=13">
 </head>
 <body>
 
@@ -191,8 +191,8 @@
       <div class="drop" id="drop">
         <h1>Nib</h1>
         <p>A quiet PDF reader that can fill and sign.</p>
-        <button class="open" id="pick">Open a PDF</button>
-        <div class="hint">or drop one anywhere on this window</div>
+        <button class="open" id="pick">Open a PDF or image</button>
+        <div class="hint">or drop a PDF or image anywhere on this window</div>
         <div class="droplinks">
           <button class="link" id="minstall" hidden>Install app</button>
           <button class="link" id="mstats">Stats for nerds</button>
@@ -389,7 +389,7 @@
   </div>
 </div>
 
-<input type="file" id="file" accept="application/pdf,.pdf" class="vh">
+<input type="file" id="file" accept="application/pdf,.pdf,image/*" class="vh">
 <input type="file" id="mergefile" accept="application/pdf,.pdf" class="vh" multiple>
 <input type="file" id="ufile" accept="image/png,image/jpeg" class="vh">
 <iframe id="printframe" title="Print"></iframe>
@@ -397,7 +397,7 @@
 
 <script src="/vendor/pdf.min.js"></script>
 <script src="/vendor/pdf-lib.min.js"></script>
-<script src="/app.js?v=11"></script>
+<script src="/app.js?v=13"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function () {
