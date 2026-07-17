@@ -2036,22 +2036,24 @@ $('fieldtoggle').addEventListener('click', function(){
 });
 each('.pf', function(el){ el.addEventListener('keydown', function(e){ e.stopPropagation(); }); });
 
-$('acctbtn').addEventListener('click', function(e){
-  e.stopPropagation();
-  var m = $('acctmenu');
+function toggleMenu(btn, menuId, otherId){
+  var m = $(menuId);
   var willOpen = m.hidden;
+  $(otherId).hidden = true;
   m.hidden = !willOpen;
   if (willOpen){
-    var r = this.getBoundingClientRect();
+    var r = btn.getBoundingClientRect();
     m.style.top = (r.bottom + 2) + 'px';
     m.style.right = Math.max(4, window.innerWidth - r.right) + 'px';
   }
-});
+}
+$('acctbtn').addEventListener('click', function(e){ e.stopPropagation(); toggleMenu(this, 'acctmenu', 'gearmenu'); });
+$('gearbtn').addEventListener('click', function(e){ e.stopPropagation(); toggleMenu(this, 'gearmenu', 'acctmenu'); });
 $('acctsignin').addEventListener('click', loginRedirect);
 $('signout').addEventListener('click', function(){ location.href = '/xhost-auth/logout?return_to=/'; });
 document.addEventListener('click', function(e){
   var acct = $('acct');
-  if (acct && !acct.contains(e.target)) $('acctmenu').hidden = true;
+  if (acct && !acct.contains(e.target)){ $('acctmenu').hidden = true; $('gearmenu').hidden = true; }
 });
 
 /* ---- alt-hold shortcut badges ---- */
@@ -2117,7 +2119,7 @@ function renderStats(d){
   $('statsbody').innerHTML = html;
 }
 function openStats(){
-  $('acctmenu').hidden = true;
+  $('gearmenu').hidden = true;
   $('statsbody').innerHTML = '<div class="statsloading note">Loading…</div>';
   $('statsscrim').classList.add('open');
   fetch('/api/stats', { credentials:'same-origin' })
@@ -2127,34 +2129,77 @@ function openStats(){
 }
 function closeStats(){ $('statsscrim').classList.remove('open'); }
 $('statsbtn').addEventListener('click', openStats);
+$('mstats').addEventListener('click', openStats);
 $('statsclose').addEventListener('click', closeStats);
 $('statsscrim').addEventListener('click', function(e){ if (e.target === this) closeStats(); });
 
-// PWA install prompt. Chromium fires beforeinstallprompt; we stash it and
-// reveal the Install button so users know installing is possible. iOS Safari
-// has no such event, so we detect it and show manual instructions instead.
+// PWA install + default-handler helpers. Chromium fires beforeinstallprompt;
+// we stash it and reveal the Install buttons so users know installing is
+// possible. iOS Safari has no such event, so we detect it and show manual
+// steps. Setting Nib as the OS default is a manual, user-driven step — no API
+// can do it — so we surface OS-specific instructions once Nib is installed.
 (function(){
   var installEvt = null;
   var isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
   var ua = navigator.userAgent || '';
   var isiOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+  var isAndroid = /Android/.test(ua);
   var isiOSSafari = isiOS && /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua);
-  var btn = $('installbtn');
-  function show(){ if (!isStandalone) btn.hidden = false; }
-  window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); installEvt = e; show(); });
-  window.addEventListener('appinstalled', function(){ installEvt = null; btn.hidden = true; });
-  if (isiOSSafari) show();
-  btn.addEventListener('click', function(){
-    $('acctmenu').hidden = true;
+  var isDesktop = !isiOS && !isAndroid;
+  var canFileHandle = 'launchQueue' in window;   // Chromium desktop
+  var installBtns = [$('installbtn'), $('minstall')];
+
+  function showInstall(){
+    if (isStandalone) return;
+    installBtns.forEach(function(b){ if (b) b.hidden = false; });
+  }
+  function hideInstall(){ installBtns.forEach(function(b){ if (b) b.hidden = true; }); }
+  function doInstall(){
+    $('gearmenu').hidden = true;
     if (installEvt) {
       installEvt.prompt();
-      installEvt.userChoice.then(function(){ installEvt = null; btn.hidden = true; });
+      installEvt.userChoice.then(function(){ installEvt = null; hideInstall(); });
     } else if (isiOS) {
       alert('To install Nib: tap the Share button, then "Add to Home Screen".');
     } else {
       alert('To install Nib, use your browser menu and choose "Install" or "Add to Home Screen".');
     }
-  });
+  }
+  window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); installEvt = e; showInstall(); });
+  window.addEventListener('appinstalled', function(){ installEvt = null; hideInstall(); syncDefaultBtn(); });
+  if (isiOSSafari) showInstall();
+  installBtns.forEach(function(b){ if (b) b.addEventListener('click', doInstall); });
+
+  // "Set as default PDF app": only meaningful once installed on a Chromium
+  // desktop (that's where file handling registers Nib with the OS).
+  function syncDefaultBtn(){
+    var installed = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+    $('setdefaultbtn').hidden = !(installed && isDesktop && canFileHandle);
+  }
+  function defaultSteps(){
+    if (/Windows NT/.test(ua)) return ''
+      + '<li>Right-click any <b>.pdf</b> file in File Explorer.</li>'
+      + '<li>Choose <b>Open with → Choose another app</b>.</li>'
+      + '<li>Pick <b>Nib</b>, tick <b>Always use this app</b>, then <b>OK</b>.</li>';
+    if (/Macintosh|Mac OS X/.test(ua)) return ''
+      + '<li>Select a <b>.pdf</b> in Finder and press <kbd>Cmd</kbd>+<kbd>I</kbd>.</li>'
+      + '<li>Under <b>Open with</b>, choose <b>Nib</b>.</li>'
+      + '<li>Click <b>Change All…</b> to apply to every PDF.</li>';
+    return ''
+      + '<li>Right-click a <b>.pdf</b> in your file manager.</li>'
+      + '<li>Open <b>Properties → Open with</b> (or <b>Open with → Set as default</b>).</li>'
+      + '<li>Choose <b>Nib</b> and apply.</li>';
+  }
+  function openDefault(){
+    $('gearmenu').hidden = true;
+    $('defaultbody').innerHTML = '<ol class="defsteps">' + defaultSteps() + '</ol>';
+    $('defaultscrim').classList.add('open');
+  }
+  window.closeDefault = function(){ $('defaultscrim').classList.remove('open'); };
+  $('setdefaultbtn').addEventListener('click', openDefault);
+  $('defaultclose').addEventListener('click', window.closeDefault);
+  $('defaultscrim').addEventListener('click', function(e){ if (e.target === this) window.closeDefault(); });
+  syncDefaultBtn();
 })();
 $('padclear').addEventListener('click', function(){ setupPad(); updateSigReady(); });
 $('typed').addEventListener('input', makeTyped);
@@ -2208,7 +2253,8 @@ window.addEventListener('keydown', function(e){
   if (ctrl) return;
 
   if (k === 'Escape'){
-    if ($('statsscrim').classList.contains('open')) closeStats();
+    if ($('defaultscrim').classList.contains('open')) closeDefault();
+    else if ($('statsscrim').classList.contains('open')) closeStats();
     else if ($('helpscrim').classList.contains('open')) closeHelp();
     else if ($('profilepop')) closePopover();
     else if ($('splitscrim').classList.contains('open')) closeSplit();
