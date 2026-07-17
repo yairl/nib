@@ -79,7 +79,7 @@ input,select{font:inherit; color:inherit}
 }
 .acctnote{padding:6px 8px; color:var(--muted); white-space:normal; line-height:1.35}
 .acctemail{padding:5px 8px; color:var(--muted); border-bottom:1px solid #e2e2e2; margin-bottom:2px; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-.acctitem{display:block; width:100%; text-align:left; padding:6px 8px; border-radius:3px; color:#22262c}
+.acctitem{display:block; width:100%; text-align:left; padding:6px 8px; border-radius:3px; color:#22262c; text-decoration:none}
 .acctitem:hover{background:var(--hover)}
 .acctsep{height:1px; background:#e2e2e2; margin:3px 0}
 

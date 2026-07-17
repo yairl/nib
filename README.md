@@ -78,3 +78,14 @@ clients can serve stale assets. See `CLAUDE.md`.
 - `public/index.html`, `public/app.js`, `public/app.css` - the client app.
 - `public/sw.js`, `public/manifest.webmanifest`, `public/icons/` - PWA service
   worker, manifest, and app icons.
+
+## License & open source
+
+Nib is open source under the [MIT License](LICENSE) and the source lives at
+<https://github.com/yairl/nib>.
+
+It relies on a few permissive, MIT-compatible libraries: **pdf.js** (Apache-2.0,
+Mozilla) and **pdf-lib** (MIT) on the client, and **pg**, **jsonwebtoken**, and
+**jwks-rsa** (all MIT) on the server. The signature fonts are under the SIL Open
+Font License 1.1. Full attributions are in
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
