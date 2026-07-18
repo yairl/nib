@@ -2402,4 +2402,22 @@ if ('launchQueue' in window && 'setConsumer' in window.launchQueue) {
   });
 }
 
+// Web Share Target: the service worker stashed the shared file in the
+// 'nib-share' cache and redirected here with ?share-target=1. Pick it up,
+// open it, and clean both the cache entry and the URL.
+if (window.location.search.indexOf('share-target') !== -1 && 'caches' in window) {
+  try { history.replaceState(null, '', '/'); } catch(e){}
+  caches.open('nib-share').then(function(c){
+    return c.match('/shared-file').then(function(res){
+      if (!res) return;
+      var name = decodeURIComponent(res.headers.get('X-File-Name') || 'shared');
+      var type = res.headers.get('Content-Type') || '';
+      return res.blob().then(function(b){
+        c.delete('/shared-file');
+        openFile(new File([b], name, { type: type }));
+      });
+    });
+  }).catch(function(){});
+}
+
 })();

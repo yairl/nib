@@ -3,15 +3,16 @@
 /* Bump ASSET_VERSION whenever the precached app shell changes (keep the
    ?v= values below in sync with the ones in index.html). Changing it renames
    the caches, so the old ones are dropped on activate. */
-var ASSET_VERSION = 'v16';
+var ASSET_VERSION = 'v17';
 var CORE_CACHE = 'nib-core-' + ASSET_VERSION;
 var RUNTIME_CACHE = 'nib-runtime-' + ASSET_VERSION;
+var SHARE_CACHE = 'nib-share';   // transient handoff for Web Share Target, unversioned
 
 var PRECACHE = [
   '/',
   '/index.html',
   '/app.css?v=15',
-  '/app.js?v=16',
+  '/app.js?v=17',
   '/manifest.webmanifest',
   '/vendor/pdf.min.js',
   '/vendor/pdf-lib.min.js',
@@ -36,7 +37,7 @@ self.addEventListener('activate', function (e) {
   e.waitUntil(
     caches.keys().then(function (keys) {
       return Promise.all(keys.map(function (k) {
-        if (k !== CORE_CACHE && k !== RUNTIME_CACHE) return caches.delete(k);
+        if (k !== CORE_CACHE && k !== RUNTIME_CACHE && k !== SHARE_CACHE) return caches.delete(k);
       }));
     }).then(function () { return self.clients.claim(); })
   );
@@ -44,9 +45,34 @@ self.addEventListener('activate', function (e) {
 
 self.addEventListener('fetch', function (e) {
   var req = e.request;
+  var url = new URL(req.url);
+
+  // Web Share Target (Android WebAPK): the OS POSTs the shared file here.
+  // Stash it in a transient cache and redirect into the app, which picks it
+  // up via ?share-target and opens it.
+  if (req.method === 'POST' && url.origin === self.location.origin && url.pathname === '/share-target') {
+    e.respondWith(
+      req.formData().then(function (fd) {
+        var file = fd.get('file');
+        if (!file || typeof file.arrayBuffer !== 'function') {
+          return Response.redirect('/', 303);
+        }
+        var headers = {
+          'Content-Type': file.type || 'application/octet-stream',
+          'X-File-Name': encodeURIComponent(file.name || 'shared')
+        };
+        return caches.open(SHARE_CACHE).then(function (c) {
+          return c.put('/shared-file', new Response(file, { headers: headers }));
+        }).then(function () {
+          return Response.redirect('/?share-target=1', 303);
+        });
+      }).catch(function () { return Response.redirect('/', 303); })
+    );
+    return;
+  }
+
   if (req.method !== 'GET') return;
 
-  var url = new URL(req.url);
   if (url.origin !== self.location.origin) return;            // fonts etc. -> network
   if (url.pathname === '/healthz') return;
   if (url.pathname.indexOf('/api/') === 0) return;            // never cache data

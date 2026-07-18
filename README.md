@@ -58,6 +58,14 @@ desktop and mobile.
   a `.pdf` straight into the installed app. A "Set as default PDF app" helper
   shows the OS-specific steps to make Nib the default, since the operating
   system — not the web app — controls the default handler.
+- **Share to Nib (Android)** — the manifest registers a Web Share Target, so
+  when Nib is installed as a WebAPK (install via Chrome; shortcut-style installs
+  from other browsers don't register with the OS) it appears in the system
+  share sheet for PDFs and images: Files app → Share → Nib. The service worker
+  catches the POST, stashes the file, and redirects into the app, which opens
+  it. Android PWAs can't appear in "Open with" — the File Handling API is
+  desktop-only — and iOS supports neither file handlers nor share targets for
+  web apps.
 
 Bump `ASSET_VERSION` in `public/sw.js` and the matching `?v=N` query params in
 `public/index.html` together whenever the precached shell changes, or installed
