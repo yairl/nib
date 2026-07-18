@@ -2151,11 +2151,17 @@ function renderStats(d){
   var ph = (d && d.pageHits) || {};
   var ed = (d && d.edits) || {};
   var overall = ed.overall || {}, day = ed.day || {}, week = ed.week || {};
+  var ins = (d && d.installs) || {};
   var html = '';
   html += '<div class="statsgroup"><h3>Page visits</h3><div class="statcards">' +
     '<div class="statcard"><div class="n">' + fmtNum(ph.total) + '</div><div class="l">Total visits</div></div>' +
     '<div class="statcard"><div class="n">' + fmtNum(ph.uniqueAnon) + '</div><div class="l">Unique anonymous</div></div>' +
     '<div class="statcard"><div class="n">' + fmtNum(ph.uniqueSignedIn) + '</div><div class="l">Unique signed-in</div></div>' +
+    '</div></div>';
+  html += '<div class="statsgroup"><h3>App installs</h3><div class="statcards">' +
+    '<div class="statcard"><div class="n">' + fmtNum(ins.total) + '</div><div class="l">All time</div></div>' +
+    '<div class="statcard"><div class="n">' + fmtNum(ins.day) + '</div><div class="l">Last 24 hours</div></div>' +
+    '<div class="statcard"><div class="n">' + fmtNum(ins.week) + '</div><div class="l">Last 7 days</div></div>' +
     '</div></div>';
   html += '<div class="statsgroup"><h3>PDFs edited</h3><div class="statcards">' +
     '<div class="statcard"><div class="n">' + fmtNum(overall.total) + '</div><div class="l">All time</div></div>' +
@@ -2221,7 +2227,7 @@ $('statsscrim').addEventListener('click', function(e){ if (e.target === this) cl
     }
   }
   window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); installEvt = e; showInstall(); });
-  window.addEventListener('appinstalled', function(){ installEvt = null; hideInstall(); syncDefaultBtn(); });
+  window.addEventListener('appinstalled', function(){ installEvt = null; hideInstall(); syncDefaultBtn(); recordEvent('install'); });
   if (isiOSSafari) showInstall();
   installBtns.forEach(function(b){ if (b) b.addEventListener('click', doInstall); });
 
